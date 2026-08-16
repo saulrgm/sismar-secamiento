@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>SISMAR - Monitoreo de Secamiento</title>
+
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+<style>
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f3f5f7;
+    color: #212529;
+}
+
+header {
+    background: #1f2529;
+    color: white;
+    padding: 22px 30px;
+}
+
+.header-content {
+    max-width: 1200px;
+    margin: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 26px;
+}
+
+header p {
+    margin: 5px 0 0;
+    color: #b9c0c5;
+}
+
+.estado-general {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: bold;
+}
+
+.punto {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.punto-offline {
+    background: #dc3545;
+}
+
+.punto-online {
+    background: #28a745;
+}
+
+.contenedor {
+    max-width: 1200px;
+    margin: 30px auto;
+    padding: 0 20px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 22px;
+}
+
+.card {
+    background: white;
+    border-radius: 18px;
+    padding: 28px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+}
+
+.card-principal {
+    min-height: 360px;
+}
+
+.nombre-secador {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.nombre-secador h2 {
+    margin: 0;
+    font-size: 22px;
+}
+
+.badge {
+    padding: 7px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.badge-offline {
+    background: #fde8e8;
+    color: #b42318;
+}
+
+.badge-online {
+    background: #e7f7ec;
+    color: #187733;
+}
+
+.temperatura-contenedor {
+    text-align: center;
+    margin: 25px 0 38px;
+}
+
+.label {
+    color: #687078;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.temperatura {
+    font-size: 82px;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+.unidad {
+    font-size: 34px;
+}
+
+.detalles {
+    border-top: 1px solid #e8ebed;
+    padding-top: 20px;
+}
+
+.detalle {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    margin: 13px 0;
+}
+
+.detalle span:first-child {
+    color: #687078;
+}
+
+.detalle strong {
+    text-align: right;
+}
+
+.valor-normal {
+    color: #198754;
+}
+
+.valor-error {
+    color: #dc3545;
+}
+
+.card h3 {
+    margin-top: 0;
+}
+
+.indicador {
+    border-bottom: 1px solid #e8ebed;
+    padding: 16px 0;
+}
+
+.indicador:last-child {
+    border-bottom: 0;
+}
+
+.indicador-titulo {
+    font-size: 13px;
+    color: #687078;
+}
+
+.indicador-valor {
+    font-size: 20px;
+    font-weight: bold;
+    margin-top: 5px;
+}
+
+.historico {
+    margin-top: 22px;
+}
+
+.grafica {
+    width: 100%;
+    height: 220px;
+    position: relative;
+    overflow: hidden;
+    border-left: 1px solid #ccd1d5;
+    border-bottom: 1px solid #ccd1d5;
+    margin-top: 20px;
+}
+
+.linea-svg {
+    width: 100%;
+    height: 100%;
+}
+
+.footer {
+    max-width: 1200px;
+    margin: 10px auto 35px;
+    padding: 0 20px;
+    color: #7a8288;
+    font-size: 13px;
+    text-align: center;
+}
+
+/* LOGIN */
+
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(20,25,29,0.78);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+}
+
+.login {
+    background: white;
+    width: calc(100% - 40px);
+    max-width: 420px;
+    border-radius: 20px;
+    padding: 32px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.3);
+}
+
+.login h2 {
+    margin-top: 0;
+}
+
+.login p {
+    color: #687078;
+    line-height: 1.5;
+}
+
+.login input {
+    width: 100%;
+    padding: 14px;
+    border: 1px solid #ccd1d5;
+    border-radius: 9px;
+    font-size: 16px;
+    margin: 8px 0;
+}
+
+.login button {
+    width: 100%;
+    border: 0;
+    padding: 14px;
+    border-radius: 9px;
+    background: #1f2529;
+    color: white;
+    font-weight: bold;
+    font-size: 16px;
+    margin-top: 10px;
+    cursor: pointer;
+}
+
+.login-error {
+    color: #dc3545;
+    font-size: 14px;
+    min-height: 20px;
+    margin-top: 10px;
+}
+
+@media(max-width: 800px) {
+
+    .grid {
+        grid-template-columns: 1fr;
+    }
+
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .temperatura {
+        font-size: 62px;
+    }
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+
+<!-- LOGIN -->
+
+<div class="overlay" id="loginOverlay">
+
+    <div class="login">
+
+        <h2>
+            SISMAR
+        </h2>
+
+        <p>
+            Monitoreo remoto de secamiento.
+            Ingresa la contraseña de acceso al
+            servicio MQTT.
+        </p>
+
+        <input
+            id="mqttPassword"
+            type="password"
+            placeholder="Contraseña MQTT"
+        >
+
+        <button onclick="conectar()">
+            Conectar
+        </button>
+
+        <div
+            class="login-error"
+            id="loginError"
+        ></div>
+
+    </div>
+
+</div>
+
+
+<header>
+
+<div class="header-content">
+
+    <div>
+
+        <h1>
+            SISMAR
+        </h1>
+
+        <p>
+            Monitoreo de Secamiento
+        </p>
+
+    </div>
+
+    <div class="estado-general">
+
+        <span
+            class="punto punto-offline"
+            id="puntoConexion"
+        ></span>
+
+        <span id="textoConexion">
+            Desconectado
+        </span>
+
+    </div>
+
+</div>
+
+</header>
+
+
+<div class="contenedor">
+
+<div class="grid">
+
+
+<!-- SECADOR -->
+
+<div class="card card-principal">
+
+    <div class="nombre-secador">
+
+        <h2>
+            SECADOR 01
+        </h2>
+
+        <span
+            id="badgeEstado"
+            class="badge badge-offline"
+        >
+            OFFLINE
+        </span>
+
+    </div>
+
+
+    <div class="temperatura-contenedor">
+
+        <div class="label">
+            Temperatura actual
+        </div>
+
+        <div>
+
+            <span
+                class="temperatura"
+                id="temperatura"
+            >
+                --
+            </span>
+
+            <span class="unidad">
+                °C
+            </span>
+
+        </div>
+
+    </div>
+
+
+    <div class="detalles">
+
+        <div class="detalle">
+
+            <span>
+                Resistencia PT100
+            </span>
+
+            <strong>
+                <span id="resistencia">--</span>
+                Ω
+            </strong>
+
+        </div>
+
+
+        <div class="detalle">
+
+            <span>
+                Estado sensor
+            </span>
+
+            <strong id="estadoSensor">
+                Sin información
+            </strong>
+
+        </div>
+
+
+        <div class="detalle">
+
+            <span>
+                Tipo
+            </span>
+
+            <strong id="tipoSensor">
+                --
+            </strong>
+
+        </div>
+
+
+        <div class="detalle">
+
+            <span>
+                Fault MAX31865
+            </span>
+
+            <strong id="fault">
+                --
+            </strong>
+
+        </div>
+
+
+        <div class="detalle">
+
+            <span>
+                Última lectura
+            </span>
+
+            <strong id="ultimaLectura">
+                --
+            </strong>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- INFORMACION -->
+
+<div class="card">
+
+    <h3>
+        Estado del sistema
+    </h3>
+
+
+    <div class="indicador">
+
+        <div class="indicador-titulo">
+            Broker MQTT
+        </div>
+
+        <div
+            class="indicador-valor"
+            id="brokerEstado"
+        >
+            Desconectado
+        </div>
+
+    </div>
+
+
+    <div class="indicador">
+
+        <div class="indicador-titulo">
+            Dispositivo
+        </div>
+
+        <div
+            class="indicador-valor"
+            id="dispositivo"
+        >
+            SECADOR-01
+        </div>
+
+    </div>
+
+
+    <div class="indicador">
+
+        <div class="indicador-titulo">
+            Sensor
+        </div>
+
+        <div
+            class="indicador-valor"
+            id="sensor"
+        >
+            PT100-01
+        </div>
+
+    </div>
+
+
+    <div class="indicador">
+
+        <div class="indicador-titulo">
+            Frecuencia
+        </div>
+
+        <div class="indicador-valor">
+            2 segundos
+        </div>
+
+    </div>
+
+</div>
+
+
+</div>
+
+
+<!-- GRAFICA -->
+
+<div class="card historico">
+
+    <h3>
+        Temperatura en tiempo real
+    </h3>
+
+    <p style="color:#687078">
+        Últimas 60 lecturas recibidas en este dispositivo.
+    </p>
+
+    <div class="grafica">
+
+        <svg
+            class="linea-svg"
+            viewBox="0 0 1000 220"
+            preserveAspectRatio="none"
+        >
+
+            <polyline
+                id="lineaTemperatura"
+                fill="none"
+                stroke="#333"
+                stroke-width="3"
+                points=""
+            />
+
+        </svg>
+
+    </div>
+
+</div>
+
+</div>
+
+
+<div class="footer">
+
+PT100 · MAX31865 · Raspberry Pi Pico W · MQTT
+
+</div>
+
+
+<script>
+
+const BROKER =
+    "wss://165a1839496b496da003fd2a5f5f10cd.s1.eu.hivemq.cloud:8884/mqtt";
+
+const MQTT_USER =
+    "dashboard_sismar";
+
+const TOPIC_TELEMETRIA =
+    "sismar/secador01/telemetria";
+
+const TOPIC_ESTADO =
+    "sismar/secador01/estado";
+
+
+let client = null;
+
+let temperaturas = [];
+
+let ultimaRecepcion = null;
+
+
+function conectar() {
+
+    const password =
+        document
+            .getElementById(
+                "mqttPassword"
+            )
+            .value;
+
+    if (!password) {
+
+        document
+            .getElementById(
+                "loginError"
+            )
+            .innerText =
+            "Ingresa la contraseña.";
+
+        return;
+
+    }
+
+
+    document
+        .getElementById(
+            "loginError"
+        )
+        .innerText =
+        "Conectando...";
+
+
+    const clientId =
+        "sismar-web-"
+        + Math.random()
+            .toString(16)
+            .substring(2, 10);
+
+
+    client = mqtt.connect(
+        BROKER,
+        {
+
+            clientId: clientId,
+
+            username:
+                MQTT_USER,
+
+            password:
+                password,
+
+            clean: true,
+
+            reconnectPeriod:
+                3000,
+
+            connectTimeout:
+                10000
+
+        }
+    );
+
+
+    client.on(
+        "connect",
+        function () {
+
+            document
+                .getElementById(
+                    "loginOverlay"
+                )
+                .style.display =
+                "none";
+
+
+            actualizarConexion(
+                true
+            );
+
+
+            client.subscribe(
+                TOPIC_TELEMETRIA
+            );
+
+
+            client.subscribe(
+                TOPIC_ESTADO
+            );
+
+        }
+    );
+
+
+    client.on(
+        "reconnect",
+        function () {
+
+            document
+                .getElementById(
+                    "textoConexion"
+                )
+                .innerText =
+                "Reconectando...";
+
+        }
+    );
+
+
+    client.on(
+        "close",
+        function () {
+
+            actualizarConexion(
+                false
+            );
+
+        }
+    );
+
+
+    client.on(
+        "offline",
+        function () {
+
+            actualizarConexion(
+                false
+            );
+
+        }
+    );
+
+
+    client.on(
+        "error",
+        function (error) {
+
+            console.error(
+                error
+            );
+
+            document
+                .getElementById(
+                    "loginError"
+                )
+                .innerText =
+                "No fue posible conectar. Revisa usuario, contraseña o Internet.";
+
+        }
+    );
+
+
+    client.on(
+        "message",
+        function (
+            topic,
+            message
+        ) {
+
+            if (
+                topic ===
+                TOPIC_ESTADO
+            ) {
+
+                procesarEstado(
+                    message.toString()
+                );
+
+                return;
+
+            }
+
+
+            if (
+                topic ===
+                TOPIC_TELEMETRIA
+            ) {
+
+                procesarTelemetria(
+                    message.toString()
+                );
+
+            }
+
+        }
+    );
+
+}
+
+
+function actualizarConexion(
+    conectado
+) {
+
+    const punto =
+        document.getElementById(
+            "puntoConexion"
+        );
+
+    const texto =
+        document.getElementById(
+            "textoConexion"
+        );
+
+    const broker =
+        document.getElementById(
+            "brokerEstado"
+        );
+
+
+    if (conectado) {
+
+        punto.className =
+            "punto punto-online";
+
+        texto.innerText =
+            "Conectado";
+
+        broker.innerText =
+            "Conectado";
+
+        broker.className =
+            "indicador-valor valor-normal";
+
+    }
+    else {
+
+        punto.className =
+            "punto punto-offline";
+
+        texto.innerText =
+            "Desconectado";
+
+        broker.innerText =
+            "Desconectado";
+
+        broker.className =
+            "indicador-valor valor-error";
+
+    }
+
+}
+
+
+function procesarEstado(
+    estado
+) {
+
+    const badge =
+        document.getElementById(
+            "badgeEstado"
+        );
+
+
+    if (
+        estado.trim() ===
+        "online"
+    ) {
+
+        badge.innerText =
+            "ONLINE";
+
+        badge.className =
+            "badge badge-online";
+
+    }
+    else {
+
+        badge.innerText =
+            "OFFLINE";
+
+        badge.className =
+            "badge badge-offline";
+
+    }
+
+}
+
+
+function procesarTelemetria(
+    texto
+) {
+
+    try {
+
+        const datos =
+            JSON.parse(
+                texto
+            );
+
+
+        ultimaRecepcion =
+            new Date();
+
+
+        if (
+            datos.temperatura
+            !== undefined
+        ) {
+
+            document
+                .getElementById(
+                    "temperatura"
+                )
+                .innerText =
+                Number(
+                    datos.temperatura
+                )
+                .toFixed(2);
+
+
+            temperaturas.push(
+                Number(
+                    datos.temperatura
+                )
+            );
+
+
+            if (
+                temperaturas.length
+                > 60
+            ) {
+
+                temperaturas.shift();
+
+            }
+
+
+            dibujarGrafica();
+
+        }
+
+
+        if (
+            datos.resistencia
+            !== undefined
+        ) {
+
+            document
+                .getElementById(
+                    "resistencia"
+                )
+                .innerText =
+                Number(
+                    datos.resistencia
+                )
+                .toFixed(2);
+
+        }
+
+
+        document
+            .getElementById(
+                "estadoSensor"
+            )
+            .innerText =
+            datos.estado
+            || "--";
+
+
+        document
+            .getElementById(
+                "tipoSensor"
+            )
+            .innerText =
+            datos.tipo
+            || "--";
+
+
+        document
+            .getElementById(
+                "fault"
+            )
+            .innerText =
+            datos.fault
+            || "--";
+
+
+        document
+            .getElementById(
+                "dispositivo"
+            )
+            .innerText =
+            datos.dispositivo
+            || "SECADOR-01";
+
+
+        document
+            .getElementById(
+                "sensor"
+            )
+            .innerText =
+            datos.sensor
+            || "PT100-01";
+
+
+        document
+            .getElementById(
+                "ultimaLectura"
+            )
+            .innerText =
+            "Ahora";
+
+
+        procesarEstado(
+            datos.estado ===
+            "online"
+            ? "online"
+            : "offline"
+        );
+
+    }
+    catch(error) {
+
+        console.error(
+            "JSON inválido:",
+            error
+        );
+
+    }
+
+}
+
+
+function dibujarGrafica() {
+
+    if (
+        temperaturas.length
+        < 2
+    ) {
+        return;
+    }
+
+
+    let minimo =
+        Math.min(
+            ...temperaturas
+        );
+
+    let maximo =
+        Math.max(
+            ...temperaturas
+        );
+
+
+    if (
+        maximo - minimo
+        < 2
+    ) {
+
+        maximo += 1;
+        minimo -= 1;
+
+    }
+
+
+    const puntos =
+        temperaturas
+        .map(
+            function(
+                temperatura,
+                index
+            ) {
+
+                const x =
+                    index
+                    * (
+                        1000
+                        /
+                        (
+                            temperaturas.length
+                            - 1
+                        )
+                    );
+
+
+                const y =
+                    210
+                    -
+                    (
+                        (
+                            temperatura
+                            - minimo
+                        )
+                        /
+                        (
+                            maximo
+                            - minimo
+                        )
+                    )
+                    * 190;
+
+
+                return (
+                    x.toFixed(1)
+                    +
+                    ","
+                    +
+                    y.toFixed(1)
+                );
+
+            }
+        )
+        .join(" ");
+
+
+    document
+        .getElementById(
+            "lineaTemperatura"
+        )
+        .setAttribute(
+            "points",
+            puntos
+        );
+
+}
+
+
+/* Mostrar tiempo desde la última lectura */
+
+setInterval(
+    function () {
+
+        if (!ultimaRecepcion) {
+            return;
+        }
+
+
+        const segundos =
+            Math.floor(
+                (
+                    new Date()
+                    - ultimaRecepcion
+                )
+                /
+                1000
+            );
+
+
+        const elemento =
+            document.getElementById(
+                "ultimaLectura"
+            );
+
+
+        if (
+            segundos <= 2
+        ) {
+
+            elemento.innerText =
+                "Ahora";
+
+        }
+        else {
+
+            elemento.innerText =
+                "Hace "
+                +
+                segundos
+                +
+                " segundos";
+
+        }
+
+
+        /*
+        Si pasan más de 10 segundos
+        sin telemetría, consideramos
+        el dispositivo offline.
+        */
+
+        if (
+            segundos > 10
+        ) {
+
+            procesarEstado(
+                "offline"
+            );
+
+        }
+
+    },
+    1000
+);
+
+
+document
+    .getElementById(
+        "mqttPassword"
+    )
+    .addEventListener(
+        "keydown",
+        function(event) {
+
+            if (
+                event.key ===
+                "Enter"
+            ) {
+
+                conectar();
+
+            }
+
+        }
+    );
+
+</script>
+
+
+</body>
+
+</html>
