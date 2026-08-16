@@ -1,1251 +1,1063 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SISMAR | Monitoreo de Secamiento</title>
 
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
-<title>SISMAR - Monitoreo de Secamiento</title>
+  <style>
+    :root {
+      --bg: #08110d;
+      --bg-2: #0d1712;
+      --panel: #101c16;
+      --panel-2: #13231b;
+      --border: rgba(78, 255, 157, 0.12);
+      --text: #ecf6ef;
+      --muted: #9db1a3;
+      --emerald: #21c87a;
+      --emerald-2: #13a564;
+      --emerald-soft: rgba(33, 200, 122, 0.14);
+      --danger: #ff5f6d;
+      --warning: #ffb84d;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      --radius: 20px;
+    }
 
-<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    * {
+      box-sizing: border-box;
+    }
 
-<style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background:
+        radial-gradient(circle at top right, rgba(33, 200, 122, 0.14), transparent 28%),
+        radial-gradient(circle at top left, rgba(33, 200, 122, 0.08), transparent 25%),
+        linear-gradient(180deg, #07100c 0%, #09140f 50%, #06100b 100%);
+      color: var(--text);
+      min-height: 100%;
+    }
 
-* {
-    box-sizing: border-box;
-}
+    .app-shell {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
 
-body {
-    margin: 0;
-    font-family: Arial, Helvetica, sans-serif;
-    background: #f3f5f7;
-    color: #212529;
-}
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(10px);
+      background: rgba(7, 13, 10, 0.78);
+      border-bottom: 1px solid var(--border);
+    }
 
-header {
-    background: #1f2529;
-    color: white;
-    padding: 22px 30px;
-}
+    .topbar-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 18px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+    }
 
-.header-content {
-    max-width: 1200px;
-    margin: auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 20px;
-}
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
 
-header h1 {
-    margin: 0;
-    font-size: 26px;
-}
+    .logo-box {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: linear-gradient(145deg, rgba(33, 200, 122, 0.15), rgba(33, 200, 122, 0.05));
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
 
-header p {
-    margin: 5px 0 0;
-    color: #b9c0c5;
-}
+    .logo-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      padding: 6px;
+    }
 
-.estado-general {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: bold;
-}
+    .logo-fallback {
+      display: none;
+      width: 100%;
+      height: 100%;
+      align-items: center;
+      justify-content: center;
+      color: var(--emerald);
+      font-size: 22px;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
 
-.punto {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    display: inline-block;
-}
+    .brand-text h1 {
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: 0.5px;
+    }
 
-.punto-offline {
-    background: #dc3545;
-}
+    .brand-text p {
+      margin: 4px 0 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
 
-.punto-online {
-    background: #28a745;
-}
+    .broker-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: bold;
+    }
 
-.contenedor {
-    max-width: 1200px;
-    margin: 30px auto;
-    padding: 0 20px;
-}
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--danger);
+      box-shadow: 0 0 12px rgba(255, 95, 109, 0.55);
+    }
 
-.grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 22px;
-}
+    .status-dot.online {
+      background: var(--emerald);
+      box-shadow: 0 0 14px rgba(33, 200, 122, 0.65);
+    }
 
-.card {
-    background: white;
-    border-radius: 18px;
-    padding: 28px;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
-}
+    .content {
+      max-width: 1280px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 26px 22px 34px;
+      flex: 1;
+    }
 
-.card-principal {
-    min-height: 360px;
-}
+    .hero {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 22px;
+      margin-bottom: 22px;
+    }
 
-.nombre-secador {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
-}
+    .card {
+      background: linear-gradient(180deg, rgba(18, 32, 24, 0.96), rgba(13, 24, 19, 0.96));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
 
-.nombre-secador h2 {
-    margin: 0;
-    font-size: 22px;
-}
+    .card-main {
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+    }
 
-.badge {
-    padding: 7px 14px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: bold;
-}
+    .card-main::before {
+      content: "";
+      position: absolute;
+      width: 280px;
+      height: 280px;
+      right: -80px;
+      top: -80px;
+      background: radial-gradient(circle, rgba(33, 200, 122, 0.18), transparent 65%);
+      pointer-events: none;
+    }
 
-.badge-offline {
-    background: #fde8e8;
-    color: #b42318;
-}
+    .main-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
 
-.badge-online {
-    background: #e7f7ec;
-    color: #187733;
-}
+    .main-title {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
 
-.temperatura-contenedor {
-    text-align: center;
-    margin: 25px 0 38px;
-}
+    .eyebrow {
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1.6px;
+      font-size: 12px;
+    }
 
-.label {
-    color: #687078;
-    font-size: 14px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
+    .main-title h2 {
+      margin: 0;
+      font-size: 28px;
+    }
 
-.temperatura {
-    font-size: 82px;
-    font-weight: bold;
-    margin-top: 10px;
-}
+    .badge {
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: bold;
+      border: 1px solid transparent;
+    }
 
-.unidad {
-    font-size: 34px;
-}
+    .badge-online {
+      color: #d8ffea;
+      background: rgba(33, 200, 122, 0.16);
+      border-color: rgba(33, 200, 122, 0.22);
+    }
 
-.detalles {
-    border-top: 1px solid #e8ebed;
-    padding-top: 20px;
-}
+    .badge-offline {
+      color: #ffd7db;
+      background: rgba(255, 95, 109, 0.12);
+      border-color: rgba(255, 95, 109, 0.22);
+    }
 
-.detalle {
-    display: flex;
-    justify-content: space-between;
-    gap: 15px;
-    margin: 13px 0;
-}
+    .temp-area {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin: 22px 0 28px;
+    }
 
-.detalle span:first-child {
-    color: #687078;
-}
+    .temp-block .label {
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
 
-.detalle strong {
-    text-align: right;
-}
+    .temp-value {
+      font-size: 88px;
+      line-height: 0.95;
+      font-weight: bold;
+      color: var(--emerald);
+      text-shadow: 0 0 18px rgba(33, 200, 122, 0.18);
+    }
 
-.valor-normal {
-    color: #198754;
-}
+    .temp-value span {
+      font-size: 34px;
+      color: #dffaea;
+    }
 
-.valor-error {
-    color: #dc3545;
-}
+    .state-mini {
+      min-width: 220px;
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+    }
 
-.card h3 {
-    margin-top: 0;
-}
+    .state-mini .mini-label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+    }
 
-.indicador {
-    border-bottom: 1px solid #e8ebed;
-    padding: 16px 0;
-}
+    .state-mini .mini-value {
+      font-size: 22px;
+      font-weight: bold;
+    }
 
-.indicador:last-child {
-    border-bottom: 0;
-}
+    .details-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
 
-.indicador-titulo {
-    font-size: 13px;
-    color: #687078;
-}
+    .detail-item {
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 14px 16px;
+    }
 
-.indicador-valor {
-    font-size: 20px;
-    font-weight: bold;
-    margin-top: 5px;
-}
+    .detail-item .d-label {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
 
-.historico {
-    margin-top: 22px;
-}
+    .detail-item .d-value {
+      font-size: 18px;
+      font-weight: bold;
+      word-break: break-word;
+    }
 
-.grafica {
-    width: 100%;
-    height: 220px;
-    position: relative;
-    overflow: hidden;
-    border-left: 1px solid #ccd1d5;
-    border-bottom: 1px solid #ccd1d5;
-    margin-top: 20px;
-}
+    .success {
+      color: #baffd6;
+    }
 
-.linea-svg {
-    width: 100%;
-    height: 100%;
-}
+    .error {
+      color: #ff9ea7;
+    }
 
-.footer {
-    max-width: 1200px;
-    margin: 10px auto 35px;
-    padding: 0 20px;
-    color: #7a8288;
-    font-size: 13px;
-    text-align: center;
-}
+    .card-side {
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
 
-/* LOGIN */
+    .side-title {
+      margin: 0 0 4px;
+      font-size: 20px;
+    }
 
-.overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(20,25,29,0.78);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 999;
-}
+    .metric-box {
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 16px;
+    }
 
-.login {
-    background: white;
-    width: calc(100% - 40px);
-    max-width: 420px;
-    border-radius: 20px;
-    padding: 32px;
-    box-shadow: 0 20px 60px rgba(0,0,0,.3);
-}
+    .metric-box .m-label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
 
-.login h2 {
-    margin-top: 0;
-}
+    .metric-box .m-value {
+      font-size: 24px;
+      font-weight: bold;
+    }
 
-.login p {
-    color: #687078;
-    line-height: 1.5;
-}
+    .metric-box .m-sub {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
 
-.login input {
-    width: 100%;
-    padding: 14px;
-    border: 1px solid #ccd1d5;
-    border-radius: 9px;
-    font-size: 16px;
-    margin: 8px 0;
-}
+    .history-card {
+      padding: 24px;
+      margin-bottom: 22px;
+    }
 
-.login button {
-    width: 100%;
-    border: 0;
-    padding: 14px;
-    border-radius: 9px;
-    background: #1f2529;
-    color: white;
-    font-weight: bold;
-    font-size: 16px;
-    margin-top: 10px;
-    cursor: pointer;
-}
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
 
-.login-error {
-    color: #dc3545;
-    font-size: 14px;
-    min-height: 20px;
-    margin-top: 10px;
-}
+    .history-header h3 {
+      margin: 0;
+      font-size: 22px;
+    }
 
-@media(max-width: 800px) {
+    .history-header p {
+      margin: 4px 0 0 0;
+      color: var(--muted);
+    }
 
-    .grid {
+    .history-stats {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .stat-chip {
+      min-width: 140px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+    }
+
+    .stat-chip .s-label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .stat-chip .s-value {
+      font-size: 19px;
+      font-weight: bold;
+    }
+
+    .chart-wrap {
+      margin-top: 16px;
+      border-radius: 18px;
+      padding: 14px;
+      background:
+        linear-gradient(180deg, rgba(33, 200, 122, 0.03), rgba(0,0,0,0)),
+        rgba(255,255,255,0.015);
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .chart-box {
+      width: 100%;
+      height: 280px;
+      position: relative;
+      overflow: hidden;
+      border-left: 1px solid rgba(255,255,255,0.16);
+      border-bottom: 1px solid rgba(255,255,255,0.16);
+      border-radius: 10px;
+      background:
+        linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(to top, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 12.5% 20%;
+    }
+
+    .chart-svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 18px 22px 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* LOGIN */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 10, 7, 0.78);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 20px;
+    }
+
+    .login-box {
+      width: 100%;
+      max-width: 430px;
+      background: linear-gradient(180deg, rgba(19, 33, 25, 0.98), rgba(10, 19, 14, 0.98));
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 28px;
+    }
+
+    .login-top {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .login-logo {
+      width: 54px;
+      height: 54px;
+      border-radius: 16px;
+      background: rgba(33, 200, 122, 0.09);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .login-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      padding: 6px;
+      display: block;
+    }
+
+    .login-logo-fallback {
+      display: none;
+      width: 100%;
+      height: 100%;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: var(--emerald);
+      font-size: 20px;
+    }
+
+    .login-box h2 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .login-box p {
+      color: var(--muted);
+      line-height: 1.5;
+      margin-top: 8px;
+      margin-bottom: 18px;
+    }
+
+    .login-box input {
+      width: 100%;
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 15px 16px;
+      font-size: 15px;
+      outline: none;
+      margin-bottom: 12px;
+    }
+
+    .login-box input:focus {
+      border-color: rgba(33, 200, 122, 0.5);
+      box-shadow: 0 0 0 4px rgba(33, 200, 122, 0.08);
+    }
+
+    .login-box button {
+      width: 100%;
+      border: 0;
+      border-radius: 14px;
+      padding: 15px 16px;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--emerald), var(--emerald-2));
+      color: #05130c;
+      font-weight: bold;
+      font-size: 15px;
+      margin-top: 4px;
+      box-shadow: 0 8px 20px rgba(33, 200, 122, 0.22);
+    }
+
+    .login-error {
+      min-height: 22px;
+      color: #ff9ea7;
+      font-size: 14px;
+      margin-top: 12px;
+    }
+
+    @media (max-width: 960px) {
+      .hero {
         grid-template-columns: 1fr;
+      }
+
+      .temp-value {
+        font-size: 68px;
+      }
+
+      .details-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
-    .header-content {
-        flex-direction: column;
+    @media (max-width: 640px) {
+      .topbar-inner,
+      .content {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      .brand-text h1 {
+        font-size: 20px;
+      }
+
+      .temp-area {
         align-items: flex-start;
+      }
+
+      .temp-value {
+        font-size: 56px;
+      }
+
+      .temp-value span {
+        font-size: 26px;
+      }
+
+      .history-stats {
+        width: 100%;
+      }
+
+      .stat-chip {
+        flex: 1 1 100%;
+      }
     }
-
-    .temperatura {
-        font-size: 62px;
-    }
-
-}
-
-</style>
-
+  </style>
 </head>
-
 <body>
+  <div class="app-shell">
 
-
-<!-- LOGIN -->
-
-<div class="overlay" id="loginOverlay">
-
-    <div class="login">
-
-        <h2>
-            SISMAR
-        </h2>
+    <!-- LOGIN -->
+    <div class="overlay" id="loginOverlay">
+      <div class="login-box">
+        <div class="login-top">
+          <div class="login-logo">
+            <img
+              src="logo-sismar.png"
+              alt="Logo SISMAR"
+              onerror="this.style.display='none'; document.getElementById('loginLogoFallback').style.display='flex';"
+            />
+            <div class="login-logo-fallback" id="loginLogoFallback">S</div>
+          </div>
+          <div>
+            <h2>SISMAR</h2>
+            <div style="color: var(--muted); font-size: 14px;">Monitoreo de Secamiento</div>
+          </div>
+        </div>
 
         <p>
-            Monitoreo remoto de secamiento.
-            Ingresa la contraseña de acceso al
-            servicio MQTT.
+          Ingresa la contraseña MQTT para visualizar el tablero en tiempo real.
         </p>
 
         <input
-            id="mqttPassword"
-            type="password"
-            placeholder="Contraseña MQTT"
-        >
+          id="mqttPassword"
+          type="password"
+          placeholder="Contraseña MQTT"
+          autocomplete="current-password"
+        />
 
-        <button onclick="conectar()">
-            Conectar
-        </button>
+        <button onclick="conectar()">Conectar</button>
 
-        <div
-            class="login-error"
-            id="loginError"
-        ></div>
-
+        <div class="login-error" id="loginError"></div>
+      </div>
     </div>
 
-</div>
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <div class="logo-box">
+            <img
+              src="logo-sismar.png"
+              alt="Logo SISMAR"
+              onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='flex';"
+            />
+            <div class="logo-fallback" id="logoFallback">S</div>
+          </div>
 
-
-<header>
-
-<div class="header-content">
-
-    <div>
-
-        <h1>
-            SISMAR
-        </h1>
-
-        <p>
-            Monitoreo de Secamiento
-        </p>
-
-    </div>
-
-    <div class="estado-general">
-
-        <span
-            class="punto punto-offline"
-            id="puntoConexion"
-        ></span>
-
-        <span id="textoConexion">
-            Desconectado
-        </span>
-
-    </div>
-
-</div>
-
-</header>
-
-
-<div class="contenedor">
-
-<div class="grid">
-
-
-<!-- SECADOR -->
-
-<div class="card card-principal">
-
-    <div class="nombre-secador">
-
-        <h2>
-            SECADOR 01
-        </h2>
-
-        <span
-            id="badgeEstado"
-            class="badge badge-offline"
-        >
-            OFFLINE
-        </span>
-
-    </div>
-
-
-    <div class="temperatura-contenedor">
-
-        <div class="label">
-            Temperatura actual
+          <div class="brand-text">
+            <h1>SISMAR</h1>
+            <p>Monitoreo de Secamiento • Telemetría en Tiempo Real</p>
+          </div>
         </div>
 
-        <div>
+        <div class="broker-pill">
+          <span class="status-dot" id="puntoConexion"></span>
+          <span id="textoConexion">Desconectado</span>
+        </div>
+      </div>
+    </header>
 
-            <span
-                class="temperatura"
-                id="temperatura"
+    <!-- CONTENT -->
+    <main class="content">
+
+      <section class="hero">
+        <section class="card card-main">
+          <div class="main-header">
+            <div class="main-title">
+              <div class="eyebrow">Panel principal</div>
+              <h2>SECADOR 01</h2>
+            </div>
+
+            <div class="badge badge-offline" id="badgeEstado">OFFLINE</div>
+          </div>
+
+          <div class="temp-area">
+            <div class="temp-block">
+              <div class="label">Temperatura actual</div>
+              <div class="temp-value" id="temperatura">--<span> °C</span></div>
+            </div>
+
+            <div class="state-mini">
+              <div class="mini-label">Estado del sensor</div>
+              <div class="mini-value" id="estadoSensor">Sin información</div>
+            </div>
+          </div>
+
+          <div class="details-grid">
+            <div class="detail-item">
+              <div class="d-label">Resistencia PT100</div>
+              <div class="d-value" id="resistencia">-- Ω</div>
+            </div>
+
+            <div class="detail-item">
+              <div class="d-label">Tipo de sensor</div>
+              <div class="d-value" id="tipoSensor">--</div>
+            </div>
+
+            <div class="detail-item">
+              <div class="d-label">Fault MAX31865</div>
+              <div class="d-value" id="fault">--</div>
+            </div>
+
+            <div class="detail-item">
+              <div class="d-label">Última lectura</div>
+              <div class="d-value" id="ultimaLectura">--</div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="card card-side">
+          <h3 class="side-title">Estado del sistema</h3>
+
+          <div class="metric-box">
+            <div class="m-label">Broker MQTT</div>
+            <div class="m-value error" id="brokerEstado">Desconectado</div>
+            <div class="m-sub">Conexión del dashboard con HiveMQ</div>
+          </div>
+
+          <div class="metric-box">
+            <div class="m-label">Dispositivo</div>
+            <div class="m-value" id="dispositivo">SECADOR-01</div>
+          </div>
+
+          <div class="metric-box">
+            <div class="m-label">Sensor</div>
+            <div class="m-value" id="sensor">PT100-01</div>
+          </div>
+
+          <div class="metric-box">
+            <div class="m-label">Frecuencia de lectura</div>
+            <div class="m-value">2 segundos</div>
+            <div class="m-sub">Actualización continua en línea</div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="card history-card">
+        <div class="history-header">
+          <div>
+            <h3>Historial en tiempo real</h3>
+            <p>Últimas 60 lecturas recibidas en este dispositivo.</p>
+          </div>
+
+          <div class="history-stats">
+            <div class="stat-chip">
+              <div class="s-label">Actual</div>
+              <div class="s-value" id="actualStat">-- °C</div>
+            </div>
+
+            <div class="stat-chip">
+              <div class="s-label">Máxima</div>
+              <div class="s-value" id="maxStat">-- °C</div>
+            </div>
+
+            <div class="stat-chip">
+              <div class="s-label">Mínima</div>
+              <div class="s-value" id="minStat">-- °C</div>
+            </div>
+
+            <div class="stat-chip">
+              <div class="s-label">Promedio</div>
+              <div class="s-value" id="avgStat">-- °C</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-wrap">
+          <div class="chart-box">
+            <svg
+              class="chart-svg"
+              viewBox="0 0 1000 280"
+              preserveAspectRatio="none"
             >
-                --
-            </span>
-
-            <span class="unidad">
-                °C
-            </span>
-
-        </div>
-
-    </div>
-
-
-    <div class="detalles">
-
-        <div class="detalle">
-
-            <span>
-                Resistencia PT100
-            </span>
-
-            <strong>
-                <span id="resistencia">--</span>
-                Ω
-            </strong>
-
-        </div>
-
-
-        <div class="detalle">
-
-            <span>
-                Estado sensor
-            </span>
-
-            <strong id="estadoSensor">
-                Sin información
-            </strong>
-
-        </div>
-
-
-        <div class="detalle">
-
-            <span>
-                Tipo
-            </span>
-
-            <strong id="tipoSensor">
-                --
-            </strong>
-
-        </div>
-
-
-        <div class="detalle">
-
-            <span>
-                Fault MAX31865
-            </span>
-
-            <strong id="fault">
-                --
-            </strong>
-
-        </div>
-
-
-        <div class="detalle">
-
-            <span>
-                Última lectura
-            </span>
-
-            <strong id="ultimaLectura">
-                --
-            </strong>
-
-        </div>
-
-    </div>
-
-</div>
-
-
-<!-- INFORMACION -->
-
-<div class="card">
-
-    <h3>
-        Estado del sistema
-    </h3>
-
-
-    <div class="indicador">
-
-        <div class="indicador-titulo">
-            Broker MQTT
-        </div>
-
-        <div
-            class="indicador-valor"
-            id="brokerEstado"
-        >
-            Desconectado
-        </div>
-
-    </div>
-
-
-    <div class="indicador">
-
-        <div class="indicador-titulo">
-            Dispositivo
-        </div>
-
-        <div
-            class="indicador-valor"
-            id="dispositivo"
-        >
-            SECADOR-01
-        </div>
-
-    </div>
-
-
-    <div class="indicador">
-
-        <div class="indicador-titulo">
-            Sensor
-        </div>
-
-        <div
-            class="indicador-valor"
-            id="sensor"
-        >
-            PT100-01
-        </div>
-
-    </div>
-
-
-    <div class="indicador">
-
-        <div class="indicador-titulo">
-            Frecuencia
-        </div>
-
-        <div class="indicador-valor">
-            2 segundos
-        </div>
-
-    </div>
-
-</div>
-
-
-</div>
-
-
-<!-- GRAFICA -->
-
-<div class="card historico">
-
-    <h3>
-        Temperatura en tiempo real
-    </h3>
-
-    <p style="color:#687078">
-        Últimas 60 lecturas recibidas en este dispositivo.
-    </p>
-
-    <div class="grafica">
-
-        <svg
-            class="linea-svg"
-            viewBox="0 0 1000 220"
-            preserveAspectRatio="none"
-        >
-
-            <polyline
+              <defs>
+                <linearGradient id="lineGlow" x1="0" x2="1" y1="0" y2="0">
+                  <stop offset="0%" stop-color="#21c87a"></stop>
+                  <stop offset="100%" stop-color="#79ffb4"></stop>
+                </linearGradient>
+              </defs>
+
+              <polyline
+                id="lineaTemperaturaGlow"
+                fill="none"
+                stroke="rgba(33, 200, 122, 0.18)"
+                stroke-width="10"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                points=""
+              />
+
+              <polyline
                 id="lineaTemperatura"
                 fill="none"
-                stroke="#333"
-                stroke-width="3"
+                stroke="url(#lineGlow)"
+                stroke-width="3.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
                 points=""
-            />
+              />
+            </svg>
+          </div>
+        </div>
+      </section>
+    </main>
 
-        </svg>
+    <footer class="footer">
+      SISMAR • PT100 • MAX31865 • Raspberry Pi Pico W • MQTT • Monitoreo remoto
+    </footer>
+  </div>
 
-    </div>
+  <script>
+    const BROKER =
+      "wss://165a1839496b496da003fd2a5f5f10cd.s1.eu.hivemq.cloud:8884/mqtt";
 
-</div>
+    const MQTT_USER =
+      "dashboard_sismar";
 
-</div>
+    const TOPIC_TELEMETRIA =
+      "sismar/secador01/telemetria";
 
+    const TOPIC_ESTADO =
+      "sismar/secador01/estado";
 
-<div class="footer">
+    let client = null;
+    let temperaturas = [];
+    let ultimaRecepcion = null;
 
-PT100 · MAX31865 · Raspberry Pi Pico W · MQTT
+    function conectar() {
+      const password =
+        document.getElementById("mqttPassword").value;
 
-</div>
-
-
-<script>
-
-const BROKER =
-    "wss://165a1839496b496da003fd2a5f5f10cd.s1.eu.hivemq.cloud:8884/mqtt";
-
-const MQTT_USER =
-    "dashboard_sismar";
-
-const TOPIC_TELEMETRIA =
-    "sismar/secador01/telemetria";
-
-const TOPIC_ESTADO =
-    "sismar/secador01/estado";
-
-
-let client = null;
-
-let temperaturas = [];
-
-let ultimaRecepcion = null;
-
-
-function conectar() {
-
-    const password =
-        document
-            .getElementById(
-                "mqttPassword"
-            )
-            .value;
-
-    if (!password) {
-
-        document
-            .getElementById(
-                "loginError"
-            )
-            .innerText =
-            "Ingresa la contraseña.";
-
+      if (!password) {
+        document.getElementById("loginError").innerText =
+          "Ingresa la contraseña.";
         return;
+      }
 
-    }
-
-
-    document
-        .getElementById(
-            "loginError"
-        )
-        .innerText =
+      document.getElementById("loginError").innerText =
         "Conectando...";
 
+      const clientId =
+        "sismar-web-" +
+        Math.random().toString(16).substring(2, 10);
 
-    const clientId =
-        "sismar-web-"
-        + Math.random()
-            .toString(16)
-            .substring(2, 10);
+      client = mqtt.connect(BROKER, {
+        clientId: clientId,
+        username: MQTT_USER,
+        password: password,
+        clean: true,
+        reconnectPeriod: 3000,
+        connectTimeout: 10000
+      });
 
+      client.on("connect", function () {
+        document.getElementById("loginOverlay").style.display = "none";
 
-    client = mqtt.connect(
-        BROKER,
-        {
+        actualizarConexion(true);
 
-            clientId: clientId,
+        client.subscribe(TOPIC_TELEMETRIA);
+        client.subscribe(TOPIC_ESTADO);
+      });
 
-            username:
-                MQTT_USER,
+      client.on("reconnect", function () {
+        document.getElementById("textoConexion").innerText =
+          "Reconectando...";
+      });
 
-            password:
-                password,
+      client.on("close", function () {
+        actualizarConexion(false);
+      });
 
-            clean: true,
+      client.on("offline", function () {
+        actualizarConexion(false);
+      });
 
-            reconnectPeriod:
-                3000,
+      client.on("error", function (error) {
+        console.error(error);
 
-            connectTimeout:
-                10000
+        document.getElementById("loginError").innerText =
+          "No fue posible conectar. Revisa la contraseña o tu conexión.";
+      });
 
+      client.on("message", function (topic, message) {
+        if (topic === TOPIC_ESTADO) {
+          procesarEstado(message.toString());
+          return;
         }
-    );
 
-
-    client.on(
-        "connect",
-        function () {
-
-            document
-                .getElementById(
-                    "loginOverlay"
-                )
-                .style.display =
-                "none";
-
-
-            actualizarConexion(
-                true
-            );
-
-
-            client.subscribe(
-                TOPIC_TELEMETRIA
-            );
-
-
-            client.subscribe(
-                TOPIC_ESTADO
-            );
-
+        if (topic === TOPIC_TELEMETRIA) {
+          procesarTelemetria(message.toString());
         }
-    );
-
-
-    client.on(
-        "reconnect",
-        function () {
-
-            document
-                .getElementById(
-                    "textoConexion"
-                )
-                .innerText =
-                "Reconectando...";
-
-        }
-    );
-
-
-    client.on(
-        "close",
-        function () {
-
-            actualizarConexion(
-                false
-            );
-
-        }
-    );
-
-
-    client.on(
-        "offline",
-        function () {
-
-            actualizarConexion(
-                false
-            );
-
-        }
-    );
-
-
-    client.on(
-        "error",
-        function (error) {
-
-            console.error(
-                error
-            );
-
-            document
-                .getElementById(
-                    "loginError"
-                )
-                .innerText =
-                "No fue posible conectar. Revisa usuario, contraseña o Internet.";
-
-        }
-    );
-
-
-    client.on(
-        "message",
-        function (
-            topic,
-            message
-        ) {
-
-            if (
-                topic ===
-                TOPIC_ESTADO
-            ) {
-
-                procesarEstado(
-                    message.toString()
-                );
-
-                return;
-
-            }
-
-
-            if (
-                topic ===
-                TOPIC_TELEMETRIA
-            ) {
-
-                procesarTelemetria(
-                    message.toString()
-                );
-
-            }
-
-        }
-    );
-
-}
-
-
-function actualizarConexion(
-    conectado
-) {
-
-    const punto =
-        document.getElementById(
-            "puntoConexion"
-        );
-
-    const texto =
-        document.getElementById(
-            "textoConexion"
-        );
-
-    const broker =
-        document.getElementById(
-            "brokerEstado"
-        );
-
-
-    if (conectado) {
-
-        punto.className =
-            "punto punto-online";
-
-        texto.innerText =
-            "Conectado";
-
-        broker.innerText =
-            "Conectado";
-
-        broker.className =
-            "indicador-valor valor-normal";
-
-    }
-    else {
-
-        punto.className =
-            "punto punto-offline";
-
-        texto.innerText =
-            "Desconectado";
-
-        broker.innerText =
-            "Desconectado";
-
-        broker.className =
-            "indicador-valor valor-error";
-
+      });
     }
 
-}
+    function actualizarConexion(conectado) {
+      const punto = document.getElementById("puntoConexion");
+      const texto = document.getElementById("textoConexion");
+      const broker = document.getElementById("brokerEstado");
 
-
-function procesarEstado(
-    estado
-) {
-
-    const badge =
-        document.getElementById(
-            "badgeEstado"
-        );
-
-
-    if (
-        estado.trim() ===
-        "online"
-    ) {
-
-        badge.innerText =
-            "ONLINE";
-
-        badge.className =
-            "badge badge-online";
-
-    }
-    else {
-
-        badge.innerText =
-            "OFFLINE";
-
-        badge.className =
-            "badge badge-offline";
-
+      if (conectado) {
+        punto.classList.add("online");
+        texto.innerText = "Conectado";
+        broker.innerText = "Conectado";
+        broker.className = "m-value success";
+      } else {
+        punto.classList.remove("online");
+        texto.innerText = "Desconectado";
+        broker.innerText = "Desconectado";
+        broker.className = "m-value error";
+      }
     }
 
-}
+    function procesarEstado(estado) {
+      const badge = document.getElementById("badgeEstado");
 
+      if (estado.trim() === "online") {
+        badge.innerText = "ONLINE";
+        badge.className = "badge badge-online";
+      } else {
+        badge.innerText = "OFFLINE";
+        badge.className = "badge badge-offline";
+      }
+    }
 
-function procesarTelemetria(
-    texto
-) {
+    function procesarTelemetria(texto) {
+      try {
+        const datos = JSON.parse(texto);
 
-    try {
+        ultimaRecepcion = new Date();
 
-        const datos =
-            JSON.parse(
-                texto
-            );
+        if (datos.temperatura !== undefined) {
+          const temperatura = Number(datos.temperatura);
 
+          document.getElementById("temperatura").innerHTML =
+            temperatura.toFixed(2) + "<span> °C</span>";
 
-        ultimaRecepcion =
-            new Date();
+          document.getElementById("actualStat").innerText =
+            temperatura.toFixed(2) + " °C";
 
+          temperaturas.push(temperatura);
 
-        if (
-            datos.temperatura
-            !== undefined
-        ) {
+          if (temperaturas.length > 60) {
+            temperaturas.shift();
+          }
 
-            document
-                .getElementById(
-                    "temperatura"
-                )
-                .innerText =
-                Number(
-                    datos.temperatura
-                )
-                .toFixed(2);
-
-
-            temperaturas.push(
-                Number(
-                    datos.temperatura
-                )
-            );
-
-
-            if (
-                temperaturas.length
-                > 60
-            ) {
-
-                temperaturas.shift();
-
-            }
-
-
-            dibujarGrafica();
-
+          actualizarEstadisticas();
+          dibujarGrafica();
         }
 
-
-        if (
-            datos.resistencia
-            !== undefined
-        ) {
-
-            document
-                .getElementById(
-                    "resistencia"
-                )
-                .innerText =
-                Number(
-                    datos.resistencia
-                )
-                .toFixed(2);
-
+        if (datos.resistencia !== undefined) {
+          document.getElementById("resistencia").innerText =
+            Number(datos.resistencia).toFixed(2) + " Ω";
         }
 
+        document.getElementById("estadoSensor").innerText =
+          datos.estado || "--";
 
-        document
-            .getElementById(
-                "estadoSensor"
-            )
-            .innerText =
-            datos.estado
-            || "--";
+        document.getElementById("tipoSensor").innerText =
+          datos.tipo || "--";
 
+        document.getElementById("fault").innerText =
+          datos.fault || "--";
 
-        document
-            .getElementById(
-                "tipoSensor"
-            )
-            .innerText =
-            datos.tipo
-            || "--";
+        document.getElementById("dispositivo").innerText =
+          datos.dispositivo || "SECADOR-01";
 
+        document.getElementById("sensor").innerText =
+          datos.sensor || "PT100-01";
 
-        document
-            .getElementById(
-                "fault"
-            )
-            .innerText =
-            datos.fault
-            || "--";
-
-
-        document
-            .getElementById(
-                "dispositivo"
-            )
-            .innerText =
-            datos.dispositivo
-            || "SECADOR-01";
-
-
-        document
-            .getElementById(
-                "sensor"
-            )
-            .innerText =
-            datos.sensor
-            || "PT100-01";
-
-
-        document
-            .getElementById(
-                "ultimaLectura"
-            )
-            .innerText =
-            "Ahora";
-
+        document.getElementById("ultimaLectura").innerText =
+          "Ahora";
 
         procesarEstado(
-            datos.estado ===
-            "online"
-            ? "online"
-            : "offline"
+          datos.estado === "online" ? "online" : "offline"
         );
-
-    }
-    catch(error) {
-
-        console.error(
-            "JSON inválido:",
-            error
-        );
-
+      } catch (error) {
+        console.error("JSON inválido:", error);
+      }
     }
 
-}
+    function actualizarEstadisticas() {
+      if (temperaturas.length === 0) return;
 
+      const max = Math.max(...temperaturas);
+      const min = Math.min(...temperaturas);
+      const avg =
+        temperaturas.reduce((a, b) => a + b, 0) / temperaturas.length;
 
-function dibujarGrafica() {
+      document.getElementById("maxStat").innerText =
+        max.toFixed(2) + " °C";
 
-    if (
-        temperaturas.length
-        < 2
-    ) {
-        return;
+      document.getElementById("minStat").innerText =
+        min.toFixed(2) + " °C";
+
+      document.getElementById("avgStat").innerText =
+        avg.toFixed(2) + " °C";
     }
 
+    function dibujarGrafica() {
+      if (temperaturas.length < 2) return;
 
-    let minimo =
-        Math.min(
-            ...temperaturas
-        );
+      let minimo = Math.min(...temperaturas);
+      let maximo = Math.max(...temperaturas);
 
-    let maximo =
-        Math.max(
-            ...temperaturas
-        );
-
-
-    if (
-        maximo - minimo
-        < 2
-    ) {
-
+      if (maximo - minimo < 2) {
         maximo += 1;
         minimo -= 1;
+      }
 
-    }
+      const puntos = temperaturas
+        .map(function (temperatura, index) {
+          const x =
+            index * (1000 / (temperaturas.length - 1));
 
+          const y =
+            260 -
+            (((temperatura - minimo) / (maximo - minimo)) * 230);
 
-    const puntos =
-        temperaturas
-        .map(
-            function(
-                temperatura,
-                index
-            ) {
-
-                const x =
-                    index
-                    * (
-                        1000
-                        /
-                        (
-                            temperaturas.length
-                            - 1
-                        )
-                    );
-
-
-                const y =
-                    210
-                    -
-                    (
-                        (
-                            temperatura
-                            - minimo
-                        )
-                        /
-                        (
-                            maximo
-                            - minimo
-                        )
-                    )
-                    * 190;
-
-
-                return (
-                    x.toFixed(1)
-                    +
-                    ","
-                    +
-                    y.toFixed(1)
-                );
-
-            }
-        )
+          return x.toFixed(1) + "," + y.toFixed(1);
+        })
         .join(" ");
 
+      document
+        .getElementById("lineaTemperatura")
+        .setAttribute("points", puntos);
+
+      document
+        .getElementById("lineaTemperaturaGlow")
+        .setAttribute("points", puntos);
+    }
+
+    setInterval(function () {
+      if (!ultimaRecepcion) return;
+
+      const segundos =
+        Math.floor((new Date() - ultimaRecepcion) / 1000);
+
+      const elemento =
+        document.getElementById("ultimaLectura");
+
+      if (segundos <= 2) {
+        elemento.innerText = "Ahora";
+      } else {
+        elemento.innerText = "Hace " + segundos + " segundos";
+      }
+
+      if (segundos > 10) {
+        procesarEstado("offline");
+      }
+    }, 1000);
 
     document
-        .getElementById(
-            "lineaTemperatura"
-        )
-        .setAttribute(
-            "points",
-            puntos
-        );
-
-}
-
-
-/* Mostrar tiempo desde la última lectura */
-
-setInterval(
-    function () {
-
-        if (!ultimaRecepcion) {
-            return;
+      .getElementById("mqttPassword")
+      .addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+          conectar();
         }
-
-
-        const segundos =
-            Math.floor(
-                (
-                    new Date()
-                    - ultimaRecepcion
-                )
-                /
-                1000
-            );
-
-
-        const elemento =
-            document.getElementById(
-                "ultimaLectura"
-            );
-
-
-        if (
-            segundos <= 2
-        ) {
-
-            elemento.innerText =
-                "Ahora";
-
-        }
-        else {
-
-            elemento.innerText =
-                "Hace "
-                +
-                segundos
-                +
-                " segundos";
-
-        }
-
-
-        /*
-        Si pasan más de 10 segundos
-        sin telemetría, consideramos
-        el dispositivo offline.
-        */
-
-        if (
-            segundos > 10
-        ) {
-
-            procesarEstado(
-                "offline"
-            );
-
-        }
-
-    },
-    1000
-);
-
-
-document
-    .getElementById(
-        "mqttPassword"
-    )
-    .addEventListener(
-        "keydown",
-        function(event) {
-
-            if (
-                event.key ===
-                "Enter"
-            ) {
-
-                conectar();
-
-            }
-
-        }
-    );
-
-</script>
-
-
+      });
+  </script>
 </body>
-
 </html>
