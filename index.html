@@ -1,1063 +1,2813 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SISMAR | Monitoreo de Secamiento</title>
-
-  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-
-  <style>
-    :root {
-      --bg: #08110d;
-      --bg-2: #0d1712;
-      --panel: #101c16;
-      --panel-2: #13231b;
-      --border: rgba(78, 255, 157, 0.12);
-      --text: #ecf6ef;
-      --muted: #9db1a3;
-      --emerald: #21c87a;
-      --emerald-2: #13a564;
-      --emerald-soft: rgba(33, 200, 122, 0.14);
-      --danger: #ff5f6d;
-      --warning: #ffb84d;
-      --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-      --radius: 20px;
-    }
 
-    * {
-      box-sizing: border-box;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    html, body {
-      margin: 0;
-      padding: 0;
-      font-family: Arial, Helvetica, sans-serif;
-      background:
-        radial-gradient(circle at top right, rgba(33, 200, 122, 0.14), transparent 28%),
-        radial-gradient(circle at top left, rgba(33, 200, 122, 0.08), transparent 25%),
-        linear-gradient(180deg, #07100c 0%, #09140f 50%, #06100b 100%);
-      color: var(--text);
-      min-height: 100%;
-    }
+<title>SISMAR | Monitoreo de Secamiento</title>
 
-    .app-shell {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
-    .topbar {
-      position: sticky;
-      top: 0;
-      z-index: 20;
-      backdrop-filter: blur(10px);
-      background: rgba(7, 13, 10, 0.78);
-      border-bottom: 1px solid var(--border);
-    }
+<style>
 
-    .topbar-inner {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 18px 22px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 20px;
-    }
+:root {
+    --bg: #07100c;
+    --panel: #0d1913;
+    --panel2: #112219;
 
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
+    --verde: #20c77a;
+    --verde2: #15985e;
+    --verdeSoft: rgba(32,199,122,.12);
 
-    .logo-box {
-      width: 52px;
-      height: 52px;
-      border-radius: 14px;
-      background: linear-gradient(145deg, rgba(33, 200, 122, 0.15), rgba(33, 200, 122, 0.05));
-      border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      box-shadow: var(--shadow);
-    }
+    --texto: #edf8f1;
+    --muted: #8fa79a;
 
-    .logo-box img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      display: block;
-      padding: 6px;
-    }
+    --borde: rgba(80,255,160,.11);
 
-    .logo-fallback {
-      display: none;
-      width: 100%;
-      height: 100%;
-      align-items: center;
-      justify-content: center;
-      color: var(--emerald);
-      font-size: 22px;
-      font-weight: bold;
-      letter-spacing: 1px;
-    }
+    --rojo: #ff6470;
+    --amarillo: #ffc857;
 
-    .brand-text h1 {
-      margin: 0;
-      font-size: 24px;
-      letter-spacing: 0.5px;
-    }
+    --sombra:
+        0 12px 35px rgba(0,0,0,.35);
 
-    .brand-text p {
-      margin: 4px 0 0 0;
-      color: var(--muted);
-      font-size: 14px;
-    }
+    --radio: 20px;
+}
 
-    .broker-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 14px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--border);
-      color: var(--text);
-      font-size: 14px;
-      font-weight: bold;
-    }
 
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: var(--danger);
-      box-shadow: 0 0 12px rgba(255, 95, 109, 0.55);
-    }
+* {
+    box-sizing: border-box;
+}
 
-    .status-dot.online {
-      background: var(--emerald);
-      box-shadow: 0 0 14px rgba(33, 200, 122, 0.65);
-    }
 
-    .content {
-      max-width: 1280px;
-      margin: 0 auto;
-      width: 100%;
-      padding: 26px 22px 34px;
-      flex: 1;
-    }
+body {
 
-    .hero {
-      display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 22px;
-      margin-bottom: 22px;
-    }
+    margin: 0;
 
-    .card {
-      background: linear-gradient(180deg, rgba(18, 32, 24, 0.96), rgba(13, 24, 19, 0.96));
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-    }
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
 
-    .card-main {
-      padding: 28px;
-      position: relative;
-      overflow: hidden;
-    }
+    color: var(--texto);
 
-    .card-main::before {
-      content: "";
-      position: absolute;
-      width: 280px;
-      height: 280px;
-      right: -80px;
-      top: -80px;
-      background: radial-gradient(circle, rgba(33, 200, 122, 0.18), transparent 65%);
-      pointer-events: none;
-    }
+    background:
+        radial-gradient(
+            circle at top right,
+            rgba(32,199,122,.11),
+            transparent 30%
+        ),
+        linear-gradient(
+            180deg,
+            #07100c,
+            #09150f
+        );
 
-    .main-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 14px;
-      margin-bottom: 24px;
-    }
+    min-height: 100vh;
 
-    .main-title {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
+}
 
-    .eyebrow {
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 1.6px;
-      font-size: 12px;
-    }
 
-    .main-title h2 {
-      margin: 0;
-      font-size: 28px;
-    }
+/* =========================================================
+   HEADER
+   ========================================================= */
 
-    .badge {
-      padding: 8px 14px;
-      border-radius: 999px;
-      font-size: 13px;
-      font-weight: bold;
-      border: 1px solid transparent;
-    }
+header {
 
-    .badge-online {
-      color: #d8ffea;
-      background: rgba(33, 200, 122, 0.16);
-      border-color: rgba(33, 200, 122, 0.22);
-    }
+    border-bottom:
+        1px solid var(--borde);
 
-    .badge-offline {
-      color: #ffd7db;
-      background: rgba(255, 95, 109, 0.12);
-      border-color: rgba(255, 95, 109, 0.22);
-    }
+    background:
+        rgba(6,14,10,.90);
 
-    .temp-area {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
-      margin: 22px 0 28px;
-    }
+    backdrop-filter:
+        blur(12px);
 
-    .temp-block .label {
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 1.2px;
-      font-size: 12px;
-      margin-bottom: 8px;
-    }
+    position:
+        sticky;
 
-    .temp-value {
-      font-size: 88px;
-      line-height: 0.95;
-      font-weight: bold;
-      color: var(--emerald);
-      text-shadow: 0 0 18px rgba(33, 200, 122, 0.18);
-    }
+    top: 0;
 
-    .temp-value span {
-      font-size: 34px;
-      color: #dffaea;
-    }
+    z-index: 20;
 
-    .state-mini {
-      min-width: 220px;
-      padding: 16px;
-      border-radius: 18px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--border);
-    }
+}
 
-    .state-mini .mini-label {
-      color: var(--muted);
-      font-size: 12px;
-      text-transform: uppercase;
-      margin-bottom: 8px;
-      letter-spacing: 1px;
-    }
 
-    .state-mini .mini-value {
-      font-size: 22px;
-      font-weight: bold;
-    }
+.header-inner {
 
-    .details-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 14px;
-    }
+    max-width:
+        1400px;
 
-    .detail-item {
-      background: rgba(255, 255, 255, 0.025);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      border-radius: 16px;
-      padding: 14px 16px;
-    }
+    margin:
+        auto;
 
-    .detail-item .d-label {
-      color: var(--muted);
-      font-size: 13px;
-      margin-bottom: 8px;
-    }
+    padding:
+        17px 24px;
 
-    .detail-item .d-value {
-      font-size: 18px;
-      font-weight: bold;
-      word-break: break-word;
-    }
+    display:
+        flex;
 
-    .success {
-      color: #baffd6;
-    }
+    align-items:
+        center;
 
-    .error {
-      color: #ff9ea7;
-    }
+    justify-content:
+        space-between;
 
-    .card-side {
-      padding: 22px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
+    gap:
+        20px;
 
-    .side-title {
-      margin: 0 0 4px;
-      font-size: 20px;
-    }
+}
 
-    .metric-box {
-      padding: 16px;
-      background: rgba(255, 255, 255, 0.025);
-      border: 1px solid rgba(255,255,255,0.05);
-      border-radius: 16px;
-    }
 
-    .metric-box .m-label {
-      color: var(--muted);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 8px;
-    }
+.marca {
 
-    .metric-box .m-value {
-      font-size: 24px;
-      font-weight: bold;
-    }
+    display:
+        flex;
 
-    .metric-box .m-sub {
-      margin-top: 6px;
-      color: var(--muted);
-      font-size: 13px;
-    }
+    align-items:
+        center;
 
-    .history-card {
-      padding: 24px;
-      margin-bottom: 22px;
-    }
+    gap:
+        14px;
 
-    .history-header {
-      display: flex;
-      justify-content: space-between;
-      gap: 18px;
-      align-items: center;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
-    }
+}
 
-    .history-header h3 {
-      margin: 0;
-      font-size: 22px;
-    }
 
-    .history-header p {
-      margin: 4px 0 0 0;
-      color: var(--muted);
-    }
+.logo {
 
-    .history-stats {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
+    width:
+        54px;
 
-    .stat-chip {
-      min-width: 140px;
-      padding: 12px 14px;
-      border-radius: 14px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid var(--border);
-    }
+    height:
+        54px;
 
-    .stat-chip .s-label {
-      color: var(--muted);
-      font-size: 12px;
-      margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
+    border-radius:
+        14px;
 
-    .stat-chip .s-value {
-      font-size: 19px;
-      font-weight: bold;
-    }
+    background:
+        var(--verdeSoft);
 
-    .chart-wrap {
-      margin-top: 16px;
-      border-radius: 18px;
-      padding: 14px;
-      background:
-        linear-gradient(180deg, rgba(33, 200, 122, 0.03), rgba(0,0,0,0)),
-        rgba(255,255,255,0.015);
-      border: 1px solid rgba(255,255,255,0.05);
-    }
+    border:
+        1px solid var(--borde);
 
-    .chart-box {
-      width: 100%;
-      height: 280px;
-      position: relative;
-      overflow: hidden;
-      border-left: 1px solid rgba(255,255,255,0.16);
-      border-bottom: 1px solid rgba(255,255,255,0.16);
-      border-radius: 10px;
-      background:
-        linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
-        linear-gradient(to top, rgba(255,255,255,0.03) 1px, transparent 1px);
-      background-size: 12.5% 20%;
-    }
+    display:
+        flex;
 
-    .chart-svg {
-      width: 100%;
-      height: 100%;
-    }
+    align-items:
+        center;
 
-    .footer {
-      border-top: 1px solid var(--border);
-      padding: 18px 22px 24px;
-      text-align: center;
-      color: var(--muted);
-      font-size: 13px;
-    }
+    justify-content:
+        center;
 
-    /* LOGIN */
-    .overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(4, 10, 7, 0.78);
-      backdrop-filter: blur(6px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-      padding: 20px;
-    }
+    overflow:
+        hidden;
 
-    .login-box {
-      width: 100%;
-      max-width: 430px;
-      background: linear-gradient(180deg, rgba(19, 33, 25, 0.98), rgba(10, 19, 14, 0.98));
-      border: 1px solid var(--border);
-      border-radius: 24px;
-      box-shadow: var(--shadow);
-      padding: 28px;
-    }
+}
 
-    .login-top {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      margin-bottom: 18px;
-    }
 
-    .login-logo {
-      width: 54px;
-      height: 54px;
-      border-radius: 16px;
-      background: rgba(33, 200, 122, 0.09);
-      border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
+.logo img {
 
-    .login-logo img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      padding: 6px;
-      display: block;
-    }
+    width:
+        100%;
 
-    .login-logo-fallback {
-      display: none;
-      width: 100%;
-      height: 100%;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      color: var(--emerald);
-      font-size: 20px;
-    }
+    height:
+        100%;
 
-    .login-box h2 {
-      margin: 0;
-      font-size: 24px;
-    }
+    object-fit:
+        contain;
 
-    .login-box p {
-      color: var(--muted);
-      line-height: 1.5;
-      margin-top: 8px;
-      margin-bottom: 18px;
-    }
+    padding:
+        5px;
+
+}
+
+
+.marca h1 {
+
+    margin:
+        0;
+
+    font-size:
+        24px;
+
+}
+
+
+.marca p {
+
+    margin:
+        4px 0 0;
+
+    color:
+        var(--muted);
+
+    font-size:
+        13px;
+
+}
+
+
+.conexion {
+
+    display:
+        flex;
+
+    align-items:
+        center;
+
+    gap:
+        9px;
+
+    padding:
+        9px 14px;
+
+    border:
+        1px solid var(--borde);
+
+    border-radius:
+        999px;
+
+    background:
+        rgba(255,255,255,.025);
+
+    font-weight:
+        bold;
+
+    font-size:
+        13px;
+
+}
+
+
+.punto {
+
+    width:
+        10px;
+
+    height:
+        10px;
+
+    border-radius:
+        50%;
+
+    background:
+        var(--rojo);
+
+}
+
+
+.punto.online {
+
+    background:
+        var(--verde);
+
+    box-shadow:
+        0 0 13px
+        rgba(32,199,122,.75);
+
+}
+
+
+/* =========================================================
+   CONTENIDO
+   ========================================================= */
+
+.contenedor {
+
+    max-width:
+        1400px;
+
+    margin:
+        auto;
+
+    padding:
+        28px 24px;
+
+}
+
+
+/* =========================================================
+   RESUMEN
+   ========================================================= */
+
+.resumen {
+
+    display:
+        grid;
+
+    grid-template-columns:
+        repeat(4,1fr);
+
+    gap:
+        16px;
+
+    margin-bottom:
+        22px;
+
+}
+
+
+.resumen-card {
+
+    background:
+        linear-gradient(
+            180deg,
+            rgba(17,34,25,.96),
+            rgba(11,23,17,.96)
+        );
+
+    border:
+        1px solid var(--borde);
+
+    border-radius:
+        17px;
+
+    padding:
+        18px;
+
+    box-shadow:
+        var(--sombra);
+
+}
+
+
+.resumen-label {
+
+    color:
+        var(--muted);
+
+    font-size:
+        11px;
+
+    letter-spacing:
+        1px;
+
+    text-transform:
+        uppercase;
+
+    margin-bottom:
+        8px;
+
+}
+
+
+.resumen-valor {
+
+    font-size:
+        26px;
+
+    font-weight:
+        bold;
+
+}
+
+
+/* =========================================================
+   TORRES
+   ========================================================= */
+
+.torres-grid {
+
+    display:
+        grid;
+
+    grid-template-columns:
+        repeat(3,1fr);
+
+    gap:
+        20px;
+
+}
+
+
+.torre {
+
+    position:
+        relative;
+
+    overflow:
+        hidden;
+
+    background:
+        linear-gradient(
+            180deg,
+            rgba(17,34,25,.97),
+            rgba(10,22,16,.97)
+        );
+
+    border:
+        1px solid var(--borde);
+
+    border-radius:
+        var(--radio);
+
+    padding:
+        23px;
+
+    box-shadow:
+        var(--sombra);
+
+}
+
+
+.torre::before {
+
+    content:
+        "";
+
+    position:
+        absolute;
+
+    width:
+        220px;
+
+    height:
+        220px;
+
+    border-radius:
+        50%;
+
+    right:
+        -90px;
+
+    top:
+        -90px;
+
+    background:
+        radial-gradient(
+            circle,
+            rgba(32,199,122,.14),
+            transparent 68%
+        );
+
+    pointer-events:
+        none;
+
+}
+
+
+.torre-header {
+
+    display:
+        flex;
+
+    align-items:
+        center;
+
+    justify-content:
+        space-between;
+
+    gap:
+        10px;
+
+}
+
+
+.torre-titulo {
+
+    font-size:
+        21px;
+
+    font-weight:
+        bold;
+
+}
+
+
+.badge {
+
+    padding:
+        7px 12px;
+
+    border-radius:
+        999px;
+
+    font-size:
+        11px;
+
+    font-weight:
+        bold;
+
+}
+
+
+.badge-online {
+
+    color:
+        #caffdf;
+
+    background:
+        rgba(32,199,122,.14);
+
+    border:
+        1px solid
+        rgba(32,199,122,.20);
+
+}
+
+
+.badge-offline {
+
+    color:
+        #ffd2d6;
+
+    background:
+        rgba(255,100,112,.10);
+
+    border:
+        1px solid
+        rgba(255,100,112,.20);
+
+}
+
+
+.badge-espera {
+
+    color:
+        #ffe2a6;
+
+    background:
+        rgba(255,200,87,.10);
+
+    border:
+        1px solid
+        rgba(255,200,87,.20);
+
+}
+
+
+.sensor-nombre {
+
+    color:
+        var(--muted);
+
+    font-size:
+        13px;
+
+    margin-top:
+        5px;
+
+}
+
+
+.temperatura {
+
+    text-align:
+        center;
+
+    margin:
+        38px 0;
+
+}
+
+
+.temp-label {
+
+    color:
+        var(--muted);
+
+    font-size:
+        11px;
+
+    letter-spacing:
+        1.2px;
 
-    .login-box input {
-      width: 100%;
-      background: rgba(255,255,255,0.03);
-      color: var(--text);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 14px;
-      padding: 15px 16px;
-      font-size: 15px;
-      outline: none;
-      margin-bottom: 12px;
+    text-transform:
+        uppercase;
+
+}
+
+
+.temp-numero {
+
+    margin-top:
+        9px;
+
+    font-size:
+        64px;
+
+    line-height:
+        1;
+
+    font-weight:
+        bold;
+
+    color:
+        var(--verde);
+
+    text-shadow:
+        0 0 20px
+        rgba(32,199,122,.15);
+
+}
+
+
+.temp-unidad {
+
+    font-size:
+        25px;
+
+    color:
+        var(--texto);
+
+}
+
+
+.datos {
+
+    border-top:
+        1px solid rgba(255,255,255,.06);
+
+    padding-top:
+        17px;
+
+}
+
+
+.fila {
+
+    display:
+        flex;
+
+    justify-content:
+        space-between;
+
+    gap:
+        10px;
+
+    margin:
+        11px 0;
+
+    font-size:
+        13px;
+
+}
+
+
+.fila span:first-child {
+
+    color:
+        var(--muted);
+
+}
+
+
+.fila strong {
+
+    text-align:
+        right;
+
+}
+
+
+/* =========================================================
+   HISTORICO
+   ========================================================= */
+
+.historico {
+
+    margin-top:
+        22px;
+
+    padding:
+        23px;
+
+    background:
+        linear-gradient(
+            180deg,
+            rgba(17,34,25,.96),
+            rgba(10,22,16,.96)
+        );
+
+    border:
+        1px solid var(--borde);
+
+    border-radius:
+        var(--radio);
+
+    box-shadow:
+        var(--sombra);
+
+}
+
+
+.hist-header {
+
+    display:
+        flex;
+
+    align-items:
+        center;
+
+    justify-content:
+        space-between;
+
+    gap:
+        20px;
+
+    flex-wrap:
+        wrap;
+
+}
+
+
+.hist-header h2 {
+
+    margin:
+        0;
+
+    font-size:
+        20px;
+
+}
+
+
+.hist-header p {
+
+    margin:
+        5px 0 0;
+
+    color:
+        var(--muted);
+
+    font-size:
+        13px;
+
+}
+
+
+.leyenda {
+
+    display:
+        flex;
+
+    flex-wrap:
+        wrap;
+
+    gap:
+        15px;
+
+}
+
+
+.leyenda-item {
+
+    display:
+        flex;
+
+    align-items:
+        center;
+
+    gap:
+        7px;
+
+    font-size:
+        12px;
+
+    color:
+        var(--muted);
+
+}
+
+
+.leyenda-color {
+
+    width:
+        22px;
+
+    height:
+        3px;
+
+    border-radius:
+        3px;
+
+}
+
+
+.linea1 {
+    background: #20c77a;
+}
+
+.linea2 {
+    background: #4aa3ff;
+}
+
+.linea3 {
+    background: #ffc857;
+}
+
+
+.grafica {
+
+    width:
+        100%;
+
+    height:
+        290px;
+
+    margin-top:
+        20px;
+
+    overflow:
+        hidden;
+
+    border-radius:
+        15px;
+
+    border:
+        1px solid rgba(255,255,255,.05);
+
+    background:
+        linear-gradient(
+            to right,
+            rgba(255,255,255,.025) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            to top,
+            rgba(255,255,255,.025) 1px,
+            transparent 1px
+        );
+
+    background-size:
+        12.5% 20%;
+
+}
+
+
+.grafica svg {
+
+    width:
+        100%;
+
+    height:
+        100%;
+
+}
+
+
+/* =========================================================
+   LOGIN
+   ========================================================= */
+
+.overlay {
+
+    position:
+        fixed;
+
+    inset:
+        0;
+
+    z-index:
+        999;
+
+    display:
+        flex;
+
+    align-items:
+        center;
+
+    justify-content:
+        center;
+
+    padding:
+        20px;
+
+    background:
+        rgba(4,10,7,.85);
+
+    backdrop-filter:
+        blur(7px);
+
+}
+
+
+.login {
+
+    width:
+        100%;
+
+    max-width:
+        420px;
+
+    padding:
+        29px;
+
+    border-radius:
+        23px;
+
+    background:
+        linear-gradient(
+            180deg,
+            #12251b,
+            #0a1710
+        );
+
+    border:
+        1px solid var(--borde);
+
+    box-shadow:
+        var(--sombra);
+
+}
+
+
+.login-marca {
+
+    display:
+        flex;
+
+    align-items:
+        center;
+
+    gap:
+        13px;
+
+    margin-bottom:
+        20px;
+
+}
+
+
+.login-logo {
+
+    width:
+        55px;
+
+    height:
+        55px;
+
+    border-radius:
+        14px;
+
+    background:
+        var(--verdeSoft);
+
+    overflow:
+        hidden;
+
+}
+
+
+.login-logo img {
+
+    width:
+        100%;
+
+    height:
+        100%;
+
+    object-fit:
+        contain;
+
+    padding:
+        5px;
+
+}
+
+
+.login h2 {
+
+    margin:
+        0;
+
+}
+
+
+.login p {
+
+    color:
+        var(--muted);
+
+    line-height:
+        1.5;
+
+    font-size:
+        14px;
+
+}
+
+
+.login input {
+
+    width:
+        100%;
+
+    margin-top:
+        11px;
+
+    padding:
+        14px;
+
+    color:
+        white;
+
+    background:
+        rgba(255,255,255,.035);
+
+    border:
+        1px solid rgba(255,255,255,.09);
+
+    border-radius:
+        12px;
+
+    outline:
+        none;
+
+}
+
+
+.login input:focus {
+
+    border-color:
+        rgba(32,199,122,.50);
+
+}
+
+
+.login button {
+
+    width:
+        100%;
+
+    margin-top:
+        13px;
+
+    padding:
+        14px;
+
+    border:
+        0;
+
+    border-radius:
+        12px;
+
+    cursor:
+        pointer;
+
+    font-weight:
+        bold;
+
+    color:
+        #04140b;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--verde),
+            var(--verde2)
+        );
+
+}
+
+
+.login-error {
+
+    min-height:
+        20px;
+
+    margin-top:
+        10px;
+
+    font-size:
+        13px;
+
+    color:
+        var(--rojo);
+
+}
+
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+footer {
+
+    text-align:
+        center;
+
+    padding:
+        25px;
+
+    color:
+        var(--muted);
+
+    font-size:
+        12px;
+
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media(max-width:1050px) {
+
+    .torres-grid {
+        grid-template-columns:
+            1fr;
     }
 
-    .login-box input:focus {
-      border-color: rgba(33, 200, 122, 0.5);
-      box-shadow: 0 0 0 4px rgba(33, 200, 122, 0.08);
+    .resumen {
+        grid-template-columns:
+            repeat(2,1fr);
     }
+
+}
 
-    .login-box button {
-      width: 100%;
-      border: 0;
-      border-radius: 14px;
-      padding: 15px 16px;
-      cursor: pointer;
-      background: linear-gradient(135deg, var(--emerald), var(--emerald-2));
-      color: #05130c;
-      font-weight: bold;
-      font-size: 15px;
-      margin-top: 4px;
-      box-shadow: 0 8px 20px rgba(33, 200, 122, 0.22);
+
+@media(max-width:600px) {
+
+    .header-inner {
+
+        align-items:
+            flex-start;
+
+        flex-direction:
+            column;
+
     }
+
+    .contenedor {
+
+        padding:
+            18px 14px;
 
-    .login-error {
-      min-height: 22px;
-      color: #ff9ea7;
-      font-size: 14px;
-      margin-top: 12px;
     }
 
-    @media (max-width: 960px) {
-      .hero {
-        grid-template-columns: 1fr;
-      }
-
-      .temp-value {
-        font-size: 68px;
-      }
-
-      .details-grid {
-        grid-template-columns: 1fr;
-      }
+    .resumen {
+
+        grid-template-columns:
+            1fr 1fr;
+
     }
+
+    .temp-numero {
 
-    @media (max-width: 640px) {
-      .topbar-inner,
-      .content {
-        padding-left: 16px;
-        padding-right: 16px;
-      }
-
-      .brand-text h1 {
-        font-size: 20px;
-      }
-
-      .temp-area {
-        align-items: flex-start;
-      }
-
-      .temp-value {
-        font-size: 56px;
-      }
-
-      .temp-value span {
-        font-size: 26px;
-      }
-
-      .history-stats {
-        width: 100%;
-      }
-
-      .stat-chip {
-        flex: 1 1 100%;
-      }
+        font-size:
+            54px;
+
     }
-  </style>
+
+}
+
+</style>
+
 </head>
-<body>
-  <div class="app-shell">
 
-    <!-- LOGIN -->
-    <div class="overlay" id="loginOverlay">
-      <div class="login-box">
-        <div class="login-top">
-          <div class="login-logo">
+
+<body>
+
+
+<!-- =========================================================
+     LOGIN
+     ========================================================= -->
+
+<div
+    class="overlay"
+    id="loginOverlay"
+>
+
+<div class="login">
+
+    <div class="login-marca">
+
+        <div class="login-logo">
+
             <img
-              src="logo-sismar.png"
-              alt="Logo SISMAR"
-              onerror="this.style.display='none'; document.getElementById('loginLogoFallback').style.display='flex';"
-            />
-            <div class="login-logo-fallback" id="loginLogoFallback">S</div>
-          </div>
-          <div>
-            <h2>SISMAR</h2>
-            <div style="color: var(--muted); font-size: 14px;">Monitoreo de Secamiento</div>
-          </div>
+                src="logo-sismar.png"
+                alt="SISMAR"
+            >
+
         </div>
 
-        <p>
-          Ingresa la contraseña MQTT para visualizar el tablero en tiempo real.
-        </p>
+        <div>
 
-        <input
-          id="mqttPassword"
-          type="password"
-          placeholder="Contraseña MQTT"
-          autocomplete="current-password"
-        />
+            <h2>
+                SISMAR
+            </h2>
 
-        <button onclick="conectar()">Conectar</button>
+            <div
+                style="
+                    color:var(--muted);
+                    font-size:13px;
+                    margin-top:3px;
+                "
+            >
+                Monitoreo de Secamiento
+            </div>
 
-        <div class="login-error" id="loginError"></div>
-      </div>
+        </div>
+
     </div>
 
-    <!-- TOPBAR -->
-    <header class="topbar">
-      <div class="topbar-inner">
-        <div class="brand">
-          <div class="logo-box">
+
+    <p>
+        Ingresa la contraseña MQTT
+        para acceder al monitoreo remoto.
+    </p>
+
+
+    <input
+        id="mqttPassword"
+        type="password"
+        placeholder="Contraseña MQTT"
+    >
+
+
+    <button
+        onclick="conectar()"
+    >
+        INGRESAR
+    </button>
+
+
+    <div
+        class="login-error"
+        id="loginError"
+    ></div>
+
+</div>
+
+</div>
+
+
+
+<!-- =========================================================
+     HEADER
+     ========================================================= -->
+
+<header>
+
+<div class="header-inner">
+
+    <div class="marca">
+
+        <div class="logo">
+
             <img
-              src="logo-sismar.png"
-              alt="Logo SISMAR"
-              onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='flex';"
-            />
-            <div class="logo-fallback" id="logoFallback">S</div>
-          </div>
-
-          <div class="brand-text">
-            <h1>SISMAR</h1>
-            <p>Monitoreo de Secamiento • Telemetría en Tiempo Real</p>
-          </div>
-        </div>
-
-        <div class="broker-pill">
-          <span class="status-dot" id="puntoConexion"></span>
-          <span id="textoConexion">Desconectado</span>
-        </div>
-      </div>
-    </header>
-
-    <!-- CONTENT -->
-    <main class="content">
-
-      <section class="hero">
-        <section class="card card-main">
-          <div class="main-header">
-            <div class="main-title">
-              <div class="eyebrow">Panel principal</div>
-              <h2>SECADOR 01</h2>
-            </div>
-
-            <div class="badge badge-offline" id="badgeEstado">OFFLINE</div>
-          </div>
-
-          <div class="temp-area">
-            <div class="temp-block">
-              <div class="label">Temperatura actual</div>
-              <div class="temp-value" id="temperatura">--<span> °C</span></div>
-            </div>
-
-            <div class="state-mini">
-              <div class="mini-label">Estado del sensor</div>
-              <div class="mini-value" id="estadoSensor">Sin información</div>
-            </div>
-          </div>
-
-          <div class="details-grid">
-            <div class="detail-item">
-              <div class="d-label">Resistencia PT100</div>
-              <div class="d-value" id="resistencia">-- Ω</div>
-            </div>
-
-            <div class="detail-item">
-              <div class="d-label">Tipo de sensor</div>
-              <div class="d-value" id="tipoSensor">--</div>
-            </div>
-
-            <div class="detail-item">
-              <div class="d-label">Fault MAX31865</div>
-              <div class="d-value" id="fault">--</div>
-            </div>
-
-            <div class="detail-item">
-              <div class="d-label">Última lectura</div>
-              <div class="d-value" id="ultimaLectura">--</div>
-            </div>
-          </div>
-        </section>
-
-        <aside class="card card-side">
-          <h3 class="side-title">Estado del sistema</h3>
-
-          <div class="metric-box">
-            <div class="m-label">Broker MQTT</div>
-            <div class="m-value error" id="brokerEstado">Desconectado</div>
-            <div class="m-sub">Conexión del dashboard con HiveMQ</div>
-          </div>
-
-          <div class="metric-box">
-            <div class="m-label">Dispositivo</div>
-            <div class="m-value" id="dispositivo">SECADOR-01</div>
-          </div>
-
-          <div class="metric-box">
-            <div class="m-label">Sensor</div>
-            <div class="m-value" id="sensor">PT100-01</div>
-          </div>
-
-          <div class="metric-box">
-            <div class="m-label">Frecuencia de lectura</div>
-            <div class="m-value">2 segundos</div>
-            <div class="m-sub">Actualización continua en línea</div>
-          </div>
-        </aside>
-      </section>
-
-      <section class="card history-card">
-        <div class="history-header">
-          <div>
-            <h3>Historial en tiempo real</h3>
-            <p>Últimas 60 lecturas recibidas en este dispositivo.</p>
-          </div>
-
-          <div class="history-stats">
-            <div class="stat-chip">
-              <div class="s-label">Actual</div>
-              <div class="s-value" id="actualStat">-- °C</div>
-            </div>
-
-            <div class="stat-chip">
-              <div class="s-label">Máxima</div>
-              <div class="s-value" id="maxStat">-- °C</div>
-            </div>
-
-            <div class="stat-chip">
-              <div class="s-label">Mínima</div>
-              <div class="s-value" id="minStat">-- °C</div>
-            </div>
-
-            <div class="stat-chip">
-              <div class="s-label">Promedio</div>
-              <div class="s-value" id="avgStat">-- °C</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="chart-wrap">
-          <div class="chart-box">
-            <svg
-              class="chart-svg"
-              viewBox="0 0 1000 280"
-              preserveAspectRatio="none"
+                src="logo-sismar.png"
+                alt="SISMAR"
             >
-              <defs>
-                <linearGradient id="lineGlow" x1="0" x2="1" y1="0" y2="0">
-                  <stop offset="0%" stop-color="#21c87a"></stop>
-                  <stop offset="100%" stop-color="#79ffb4"></stop>
-                </linearGradient>
-              </defs>
 
-              <polyline
-                id="lineaTemperaturaGlow"
-                fill="none"
-                stroke="rgba(33, 200, 122, 0.18)"
-                stroke-width="10"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                points=""
-              />
-
-              <polyline
-                id="lineaTemperatura"
-                fill="none"
-                stroke="url(#lineGlow)"
-                stroke-width="3.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                points=""
-              />
-            </svg>
-          </div>
         </div>
-      </section>
-    </main>
 
-    <footer class="footer">
-      SISMAR • PT100 • MAX31865 • Raspberry Pi Pico W • MQTT • Monitoreo remoto
-    </footer>
-  </div>
 
-  <script>
-    const BROKER =
-      "wss://165a1839496b496da003fd2a5f5f10cd.s1.eu.hivemq.cloud:8884/mqtt";
+        <div>
 
-    const MQTT_USER =
-      "dashboard_sismar";
+            <h1>
+                SISMAR
+            </h1>
 
-    const TOPIC_TELEMETRIA =
-      "sismar/secador01/telemetria";
+            <p>
+                Monitoreo de Secamiento
+                · 3 Torres
+            </p>
 
-    const TOPIC_ESTADO =
-      "sismar/secador01/estado";
+        </div>
 
-    let client = null;
-    let temperaturas = [];
-    let ultimaRecepcion = null;
+    </div>
 
-    function conectar() {
-      const password =
-        document.getElementById("mqttPassword").value;
 
-      if (!password) {
-        document.getElementById("loginError").innerText =
-          "Ingresa la contraseña.";
+    <div class="conexion">
+
+        <span
+            class="punto"
+            id="puntoConexion"
+        ></span>
+
+        <span
+            id="textoConexion"
+        >
+            Desconectado
+        </span>
+
+    </div>
+
+</div>
+
+</header>
+
+
+
+<!-- =========================================================
+     CONTENIDO
+     ========================================================= -->
+
+<main class="contenedor">
+
+
+<!-- RESUMEN -->
+
+<section class="resumen">
+
+    <div class="resumen-card">
+
+        <div class="resumen-label">
+            Sensores Online
+        </div>
+
+        <div
+            class="resumen-valor"
+            id="sensoresOnline"
+        >
+            0 / 3
+        </div>
+
+    </div>
+
+
+    <div class="resumen-card">
+
+        <div class="resumen-label">
+            Temperatura máxima
+        </div>
+
+        <div
+            class="resumen-valor"
+            id="tempMaxima"
+        >
+            --
+        </div>
+
+    </div>
+
+
+    <div class="resumen-card">
+
+        <div class="resumen-label">
+            Temperatura mínima
+        </div>
+
+        <div
+            class="resumen-valor"
+            id="tempMinima"
+        >
+            --
+        </div>
+
+    </div>
+
+
+    <div class="resumen-card">
+
+        <div class="resumen-label">
+            Promedio
+        </div>
+
+        <div
+            class="resumen-valor"
+            id="tempPromedio"
+        >
+            --
+        </div>
+
+    </div>
+
+</section>
+
+
+
+<!-- =========================================================
+     TORRES
+     ========================================================= -->
+
+<section class="torres-grid">
+
+
+<!-- TORRE 1 -->
+
+<div
+    class="torre"
+    id="card-torre01"
+>
+
+    <div class="torre-header">
+
+        <div>
+
+            <div class="torre-titulo">
+                TORRE 1
+            </div>
+
+            <div
+                class="sensor-nombre"
+                id="sensor-torre01"
+            >
+                PT100-01
+            </div>
+
+        </div>
+
+
+        <div
+            class="badge badge-offline"
+            id="badge-torre01"
+        >
+            OFFLINE
+        </div>
+
+    </div>
+
+
+    <div class="temperatura">
+
+        <div class="temp-label">
+            Temperatura actual
+        </div>
+
+        <div
+            class="temp-numero"
+            id="temp-torre01"
+        >
+            --
+            <span class="temp-unidad">
+                °C
+            </span>
+        </div>
+
+    </div>
+
+
+    <div class="datos">
+
+        <div class="fila">
+
+            <span>
+                Resistencia
+            </span>
+
+            <strong
+                id="res-torre01"
+            >
+                --
+            </strong>
+
+        </div>
+
+
+        <div class="fila">
+
+            <span>
+                MAX31865
+            </span>
+
+            <strong
+                id="max-torre01"
+            >
+                --
+            </strong>
+
+        </div>
+
+
+        <div class="fila">
+
+            <span>
+                Configuración
+            </span>
+
+            <strong
+                id="hilos-torre01"
+            >
+                --
+            </strong>
+
+        </div>
+
+
+        <div class="fila">
+
+            <span>
+                Última lectura
+            </span>
+
+            <strong
+                id="ultima-torre01"
+            >
+                --
+            </strong>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- TORRE 2 -->
+
+<div
+    class="torre"
+    id="card-torre02"
+>
+
+    <div class="torre-header">
+
+        <div>
+
+            <div class="torre-titulo">
+                TORRE 2
+            </div>
+
+            <div
+                class="sensor-nombre"
+                id="sensor-torre02"
+            >
+                PT100-02
+            </div>
+
+        </div>
+
+
+        <div
+            class="badge badge-espera"
+            id="badge-torre02"
+        >
+            SIN HARDWARE
+        </div>
+
+    </div>
+
+
+    <div class="temperatura">
+
+        <div class="temp-label">
+            Temperatura actual
+        </div>
+
+        <div
+            class="temp-numero"
+            id="temp-torre02"
+        >
+            --
+            <span class="temp-unidad">
+                °C
+            </span>
+        </div>
+
+    </div>
+
+
+    <div class="datos">
+
+        <div class="fila">
+
+            <span>
+                Resistencia
+            </span>
+
+            <strong
+                id="res-torre02"
+            >
+                --
+            </strong>
+
+        </div>
+
+
+        <div class="fila">
+
+            <span>
+                MAX31865
+            </span>
+
+            <strong
+                id="max-torre02"
+            >
+                NO DETECTADO
+            </strong>
+
+        </div>
+
+
+        <div class="fila">
+
+            <span>
+                Configuración
+            </span>
+
+            <strong
+                id="hilos-torre02"
+            >
+                --
+            </strong>
+
+        </div>
+
+
+        <div class="fila">
+
+            <span>
+                Última lectura
+            </span>
+
+            <strong
+                id="ultima-torre02"
+            >
+                --
+            </strong>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- TORRE 3 -->
+
+<div
+    class="torre"
+    id="card-torre03"
+>
+
+    <div class="torre-header">
+
+        <div>
+
+            <div class="torre-titulo">
+                TORRE 3
+            </div>
+
+            <div
+                class="sensor-nombre"
+                id="sensor-torre03"
+            >
+                PT100-03
+            </div>
+
+        </div>
+
+
+        <div
+            class="badge badge-espera"
+            id="badge-torre03"
+        >
+            SIN HARDWARE
+        </div>
+
+    </div>
+
+
+    <div class="temperatura">
+
+        <div class="temp-label">
+            Temperatura actual
+        </div>
+
+        <div
+            class="temp-numero"
+            id="temp-torre03"
+        >
+            --
+            <span class="temp-unidad">
+                °C
+            </span>
+        </div>
+
+    </div>
+
+
+    <div class="datos">
+
+        <div class="fila">
+
+            <span>
+                Resistencia
+            </span>
+
+            <strong
+                id="res-torre03"
+            >
+                --
+            </strong>
+
+        </div>
+
+
+        <div class="fila">
+
+            <span>
+                MAX31865
+            </span>
+
+            <strong
+                id="max-torre03"
+            >
+                NO DETECTADO
+            </strong>
+
+        </div>
+
+
+        <div class="fila">
+
+            <span>
+                Configuración
+            </span>
+
+            <strong
+                id="hilos-torre03"
+            >
+                --
+            </strong>
+
+        </div>
+
+
+        <div class="fila">
+
+            <span>
+                Última lectura
+            </span>
+
+            <strong
+                id="ultima-torre03"
+            >
+                --
+            </strong>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+</section>
+
+
+
+<!-- =========================================================
+     GRAFICA
+     ========================================================= -->
+
+<section class="historico">
+
+    <div class="hist-header">
+
+        <div>
+
+            <h2>
+                Temperatura en Tiempo Real
+            </h2>
+
+            <p>
+                Últimas 60 lecturas recibidas
+                por torre.
+            </p>
+
+        </div>
+
+
+        <div class="leyenda">
+
+            <div class="leyenda-item">
+
+                <span
+                    class="leyenda-color linea1"
+                ></span>
+
+                Torre 1
+
+            </div>
+
+
+            <div class="leyenda-item">
+
+                <span
+                    class="leyenda-color linea2"
+                ></span>
+
+                Torre 2
+
+            </div>
+
+
+            <div class="leyenda-item">
+
+                <span
+                    class="leyenda-color linea3"
+                ></span>
+
+                Torre 3
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="grafica">
+
+        <svg
+            viewBox="0 0 1200 290"
+            preserveAspectRatio="none"
+        >
+
+            <polyline
+                id="linea-torre01"
+                fill="none"
+                stroke="#20c77a"
+                stroke-width="4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                points=""
+            />
+
+
+            <polyline
+                id="linea-torre02"
+                fill="none"
+                stroke="#4aa3ff"
+                stroke-width="4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                points=""
+            />
+
+
+            <polyline
+                id="linea-torre03"
+                fill="none"
+                stroke="#ffc857"
+                stroke-width="4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                points=""
+            />
+
+        </svg>
+
+    </div>
+
+</section>
+
+
+</main>
+
+
+
+<footer>
+
+SISMAR · PT100 · MAX31865 · Raspberry Pi Pico W · MQTT
+
+</footer>
+
+
+
+<script>
+
+
+/* =========================================================
+   MQTT
+   ========================================================= */
+
+const BROKER =
+    "wss://165a1839496b496da003fd2a5f5f10cd.s1.eu.hivemq.cloud:8884/mqtt";
+
+
+const MQTT_USER =
+    "dashboard_sismar";
+
+
+const TOPIC_TELEMETRIA =
+    "sismar/secador01/telemetria";
+
+
+const TOPIC_ESTADO =
+    "sismar/secador01/estado";
+
+
+let client = null;
+
+
+const historial = {
+
+    torre01: [],
+
+    torre02: [],
+
+    torre03: []
+
+};
+
+
+const ultimaLectura = {
+
+    torre01: null,
+
+    torre02: null,
+
+    torre03: null
+
+};
+
+
+
+/* =========================================================
+   CONEXION
+   ========================================================= */
+
+function conectar() {
+
+    const password =
+        document
+        .getElementById(
+            "mqttPassword"
+        )
+        .value;
+
+
+    if (!password) {
+
+        document
+        .getElementById(
+            "loginError"
+        )
+        .innerText =
+        "Ingresa la contraseña.";
+
         return;
-      }
 
-      document.getElementById("loginError").innerText =
-        "Conectando...";
-
-      const clientId =
-        "sismar-web-" +
-        Math.random().toString(16).substring(2, 10);
-
-      client = mqtt.connect(BROKER, {
-        clientId: clientId,
-        username: MQTT_USER,
-        password: password,
-        clean: true,
-        reconnectPeriod: 3000,
-        connectTimeout: 10000
-      });
-
-      client.on("connect", function () {
-        document.getElementById("loginOverlay").style.display = "none";
-
-        actualizarConexion(true);
-
-        client.subscribe(TOPIC_TELEMETRIA);
-        client.subscribe(TOPIC_ESTADO);
-      });
-
-      client.on("reconnect", function () {
-        document.getElementById("textoConexion").innerText =
-          "Reconectando...";
-      });
-
-      client.on("close", function () {
-        actualizarConexion(false);
-      });
-
-      client.on("offline", function () {
-        actualizarConexion(false);
-      });
-
-      client.on("error", function (error) {
-        console.error(error);
-
-        document.getElementById("loginError").innerText =
-          "No fue posible conectar. Revisa la contraseña o tu conexión.";
-      });
-
-      client.on("message", function (topic, message) {
-        if (topic === TOPIC_ESTADO) {
-          procesarEstado(message.toString());
-          return;
-        }
-
-        if (topic === TOPIC_TELEMETRIA) {
-          procesarTelemetria(message.toString());
-        }
-      });
     }
 
-    function actualizarConexion(conectado) {
-      const punto = document.getElementById("puntoConexion");
-      const texto = document.getElementById("textoConexion");
-      const broker = document.getElementById("brokerEstado");
-
-      if (conectado) {
-        punto.classList.add("online");
-        texto.innerText = "Conectado";
-        broker.innerText = "Conectado";
-        broker.className = "m-value success";
-      } else {
-        punto.classList.remove("online");
-        texto.innerText = "Desconectado";
-        broker.innerText = "Desconectado";
-        broker.className = "m-value error";
-      }
-    }
-
-    function procesarEstado(estado) {
-      const badge = document.getElementById("badgeEstado");
-
-      if (estado.trim() === "online") {
-        badge.innerText = "ONLINE";
-        badge.className = "badge badge-online";
-      } else {
-        badge.innerText = "OFFLINE";
-        badge.className = "badge badge-offline";
-      }
-    }
-
-    function procesarTelemetria(texto) {
-      try {
-        const datos = JSON.parse(texto);
-
-        ultimaRecepcion = new Date();
-
-        if (datos.temperatura !== undefined) {
-          const temperatura = Number(datos.temperatura);
-
-          document.getElementById("temperatura").innerHTML =
-            temperatura.toFixed(2) + "<span> °C</span>";
-
-          document.getElementById("actualStat").innerText =
-            temperatura.toFixed(2) + " °C";
-
-          temperaturas.push(temperatura);
-
-          if (temperaturas.length > 60) {
-            temperaturas.shift();
-          }
-
-          actualizarEstadisticas();
-          dibujarGrafica();
-        }
-
-        if (datos.resistencia !== undefined) {
-          document.getElementById("resistencia").innerText =
-            Number(datos.resistencia).toFixed(2) + " Ω";
-        }
-
-        document.getElementById("estadoSensor").innerText =
-          datos.estado || "--";
-
-        document.getElementById("tipoSensor").innerText =
-          datos.tipo || "--";
-
-        document.getElementById("fault").innerText =
-          datos.fault || "--";
-
-        document.getElementById("dispositivo").innerText =
-          datos.dispositivo || "SECADOR-01";
-
-        document.getElementById("sensor").innerText =
-          datos.sensor || "PT100-01";
-
-        document.getElementById("ultimaLectura").innerText =
-          "Ahora";
-
-        procesarEstado(
-          datos.estado === "online" ? "online" : "offline"
-        );
-      } catch (error) {
-        console.error("JSON inválido:", error);
-      }
-    }
-
-    function actualizarEstadisticas() {
-      if (temperaturas.length === 0) return;
-
-      const max = Math.max(...temperaturas);
-      const min = Math.min(...temperaturas);
-      const avg =
-        temperaturas.reduce((a, b) => a + b, 0) / temperaturas.length;
-
-      document.getElementById("maxStat").innerText =
-        max.toFixed(2) + " °C";
-
-      document.getElementById("minStat").innerText =
-        min.toFixed(2) + " °C";
-
-      document.getElementById("avgStat").innerText =
-        avg.toFixed(2) + " °C";
-    }
-
-    function dibujarGrafica() {
-      if (temperaturas.length < 2) return;
-
-      let minimo = Math.min(...temperaturas);
-      let maximo = Math.max(...temperaturas);
-
-      if (maximo - minimo < 2) {
-        maximo += 1;
-        minimo -= 1;
-      }
-
-      const puntos = temperaturas
-        .map(function (temperatura, index) {
-          const x =
-            index * (1000 / (temperaturas.length - 1));
-
-          const y =
-            260 -
-            (((temperatura - minimo) / (maximo - minimo)) * 230);
-
-          return x.toFixed(1) + "," + y.toFixed(1);
-        })
-        .join(" ");
-
-      document
-        .getElementById("lineaTemperatura")
-        .setAttribute("points", puntos);
-
-      document
-        .getElementById("lineaTemperaturaGlow")
-        .setAttribute("points", puntos);
-    }
-
-    setInterval(function () {
-      if (!ultimaRecepcion) return;
-
-      const segundos =
-        Math.floor((new Date() - ultimaRecepcion) / 1000);
-
-      const elemento =
-        document.getElementById("ultimaLectura");
-
-      if (segundos <= 2) {
-        elemento.innerText = "Ahora";
-      } else {
-        elemento.innerText = "Hace " + segundos + " segundos";
-      }
-
-      if (segundos > 10) {
-        procesarEstado("offline");
-      }
-    }, 1000);
 
     document
-      .getElementById("mqttPassword")
-      .addEventListener("keydown", function (event) {
-        if (event.key === "Enter") {
-          conectar();
+    .getElementById(
+        "loginError"
+    )
+    .innerText =
+    "Conectando...";
+
+
+    const clientId =
+        "sismar-web-"
+        +
+        Date.now().toString(36)
+        +
+        "-"
+        +
+        Math.random()
+        .toString(16)
+        .substring(2,8);
+
+
+    client =
+        mqtt.connect(
+            BROKER,
+            {
+
+                clientId:
+                    clientId,
+
+                username:
+                    MQTT_USER,
+
+                password:
+                    password,
+
+                clean:
+                    true,
+
+                reconnectPeriod:
+                    3000,
+
+                connectTimeout:
+                    10000
+
+            }
+        );
+
+
+    client.on(
+        "connect",
+        function() {
+
+            document
+            .getElementById(
+                "loginOverlay"
+            )
+            .style.display =
+            "none";
+
+
+            cambiarConexion(
+                true
+            );
+
+
+            client.subscribe(
+                TOPIC_TELEMETRIA
+            );
+
+
+            client.subscribe(
+                TOPIC_ESTADO
+            );
+
         }
-      });
-  </script>
+    );
+
+
+    client.on(
+        "close",
+        function() {
+
+            cambiarConexion(
+                false
+            );
+
+        }
+    );
+
+
+    client.on(
+        "offline",
+        function() {
+
+            cambiarConexion(
+                false
+            );
+
+        }
+    );
+
+
+    client.on(
+        "error",
+        function(error) {
+
+            console.error(
+                error
+            );
+
+
+            document
+            .getElementById(
+                "loginError"
+            )
+            .innerText =
+            "No fue posible conectar.";
+
+        }
+    );
+
+
+    client.on(
+        "message",
+        function(
+            topic,
+            message
+        ) {
+
+            if (
+                topic ===
+                TOPIC_ESTADO
+            ) {
+
+                if (
+                    message
+                    .toString()
+                    .trim()
+                    ===
+                    "offline"
+                ) {
+
+                    marcarTodoOffline();
+
+                }
+
+                return;
+
+            }
+
+
+            if (
+                topic ===
+                TOPIC_TELEMETRIA
+            ) {
+
+                procesarTelemetria(
+                    message.toString()
+                );
+
+            }
+
+        }
+    );
+
+}
+
+
+
+/* =========================================================
+   CONEXION VISUAL
+   ========================================================= */
+
+function cambiarConexion(
+    online
+) {
+
+    const punto =
+        document
+        .getElementById(
+            "puntoConexion"
+        );
+
+
+    const texto =
+        document
+        .getElementById(
+            "textoConexion"
+        );
+
+
+    if (online) {
+
+        punto.classList.add(
+            "online"
+        );
+
+        texto.innerText =
+            "Conectado";
+
+    }
+
+    else {
+
+        punto.classList.remove(
+            "online"
+        );
+
+        texto.innerText =
+            "Desconectado";
+
+    }
+
+}
+
+
+
+/* =========================================================
+   TELEMETRIA
+   ========================================================= */
+
+function procesarTelemetria(
+    texto
+) {
+
+    try {
+
+        const datos =
+            JSON.parse(
+                texto
+            );
+
+
+        if (
+            datos.torres
+        ) {
+
+            actualizarTorre(
+                "torre01",
+                datos.torres.torre01
+            );
+
+
+            actualizarTorre(
+                "torre02",
+                datos.torres.torre02
+            );
+
+
+            actualizarTorre(
+                "torre03",
+                datos.torres.torre03
+            );
+
+        }
+
+
+        if (
+            datos.resumen
+        ) {
+
+            actualizarResumen(
+                datos.resumen
+            );
+
+        }
+
+
+        dibujarGrafica();
+
+    }
+
+    catch(error) {
+
+        console.error(
+            "Error JSON:",
+            error
+        );
+
+    }
+
+}
+
+
+
+/* =========================================================
+   ACTUALIZAR TORRE
+   ========================================================= */
+
+function actualizarTorre(
+    id,
+    datos
+) {
+
+    if (!datos) {
+        return;
+    }
+
+
+    const badge =
+        document
+        .getElementById(
+            "badge-" + id
+        );
+
+
+    document
+    .getElementById(
+        "sensor-" + id
+    )
+    .innerText =
+        datos.sensor
+        || "--";
+
+
+    document
+    .getElementById(
+        "hilos-" + id
+    )
+    .innerText =
+        datos.hilos
+        ?
+        datos.hilos
+        + " hilos"
+        :
+        "--";
+
+
+    if (
+        datos.estado
+        ===
+        "online"
+    ) {
+
+        badge.innerText =
+            "ONLINE";
+
+        badge.className =
+            "badge badge-online";
+
+
+        document
+        .getElementById(
+            "temp-" + id
+        )
+        .innerHTML =
+            Number(
+                datos.temperatura
+            )
+            .toFixed(2)
+            +
+            '<span class="temp-unidad"> °C</span>';
+
+
+        document
+        .getElementById(
+            "res-" + id
+        )
+        .innerText =
+            Number(
+                datos.resistencia
+            )
+            .toFixed(2)
+            +
+            " Ω";
+
+
+        document
+        .getElementById(
+            "max-" + id
+        )
+        .innerText =
+            datos.fault
+            ||
+            "0x00";
+
+
+        ultimaLectura[id] =
+            new Date();
+
+
+        historial[id].push(
+            Number(
+                datos.temperatura
+            )
+        );
+
+
+        if (
+            historial[id].length
+            >
+            60
+        ) {
+
+            historial[id].shift();
+
+        }
+
+    }
+
+
+    else if (
+        datos.estado
+        ===
+        "hardware_no_disponible"
+    ) {
+
+        badge.innerText =
+            "SIN HARDWARE";
+
+        badge.className =
+            "badge badge-espera";
+
+
+        document
+        .getElementById(
+            "temp-" + id
+        )
+        .innerHTML =
+            '--<span class="temp-unidad"> °C</span>';
+
+
+        document
+        .getElementById(
+            "res-" + id
+        )
+        .innerText =
+            "--";
+
+
+        document
+        .getElementById(
+            "max-" + id
+        )
+        .innerText =
+            "NO DETECTADO";
+
+    }
+
+
+    else {
+
+        badge.innerText =
+            "ERROR";
+
+        badge.className =
+            "badge badge-offline";
+
+
+        document
+        .getElementById(
+            "max-" + id
+        )
+        .innerText =
+            datos.fault
+            ||
+            "ERROR";
+
+    }
+
+}
+
+
+
+/* =========================================================
+   RESUMEN
+   ========================================================= */
+
+function actualizarResumen(
+    resumen
+) {
+
+    document
+    .getElementById(
+        "sensoresOnline"
+    )
+    .innerText =
+        (
+            resumen.sensores_online
+            || 0
+        )
+        +
+        " / 3";
+
+
+    document
+    .getElementById(
+        "tempMaxima"
+    )
+    .innerText =
+        resumen.temperatura_maxima
+        !== null
+        ?
+        Number(
+            resumen.temperatura_maxima
+        )
+        .toFixed(2)
+        +
+        " °C"
+        :
+        "--";
+
+
+    document
+    .getElementById(
+        "tempMinima"
+    )
+    .innerText =
+        resumen.temperatura_minima
+        !== null
+        ?
+        Number(
+            resumen.temperatura_minima
+        )
+        .toFixed(2)
+        +
+        " °C"
+        :
+        "--";
+
+
+    document
+    .getElementById(
+        "tempPromedio"
+    )
+    .innerText =
+        resumen.temperatura_promedio
+        !== null
+        ?
+        Number(
+            resumen.temperatura_promedio
+        )
+        .toFixed(2)
+        +
+        " °C"
+        :
+        "--";
+
+}
+
+
+
+/* =========================================================
+   GRAFICA
+   ========================================================= */
+
+function dibujarGrafica() {
+
+    const todos =
+        [
+            ...historial.torre01,
+            ...historial.torre02,
+            ...historial.torre03
+        ];
+
+
+    if (
+        todos.length
+        <
+        2
+    ) {
+
+        return;
+
+    }
+
+
+    let minimo =
+        Math.min(
+            ...todos
+        );
+
+
+    let maximo =
+        Math.max(
+            ...todos
+        );
+
+
+    if (
+        maximo
+        -
+        minimo
+        <
+        2
+    ) {
+
+        minimo -= 1;
+
+        maximo += 1;
+
+    }
+
+
+    dibujarLinea(
+        "torre01",
+        minimo,
+        maximo
+    );
+
+
+    dibujarLinea(
+        "torre02",
+        minimo,
+        maximo
+    );
+
+
+    dibujarLinea(
+        "torre03",
+        minimo,
+        maximo
+    );
+
+}
+
+
+
+function dibujarLinea(
+    id,
+    minimo,
+    maximo
+) {
+
+    const datos =
+        historial[id];
+
+
+    if (
+        datos.length
+        <
+        2
+    ) {
+
+        return;
+
+    }
+
+
+    const puntos =
+        datos
+        .map(
+            function(
+                temperatura,
+                index
+            ) {
+
+                const x =
+                    index
+                    *
+                    (
+                        1200
+                        /
+                        (
+                            datos.length
+                            -
+                            1
+                        )
+                    );
+
+
+                const y =
+                    270
+                    -
+                    (
+                        (
+                            temperatura
+                            -
+                            minimo
+                        )
+                        /
+                        (
+                            maximo
+                            -
+                            minimo
+                        )
+                    )
+                    *
+                    245;
+
+
+                return (
+                    x.toFixed(1)
+                    +
+                    ","
+                    +
+                    y.toFixed(1)
+                );
+
+            }
+        )
+        .join(
+            " "
+        );
+
+
+    document
+    .getElementById(
+        "linea-" + id
+    )
+    .setAttribute(
+        "points",
+        puntos
+    );
+
+}
+
+
+
+/* =========================================================
+   TIEMPO ULTIMA LECTURA
+   ========================================================= */
+
+setInterval(
+    function() {
+
+        [
+            "torre01",
+            "torre02",
+            "torre03"
+        ]
+        .forEach(
+            function(id) {
+
+                if (
+                    !ultimaLectura[id]
+                ) {
+
+                    return;
+
+                }
+
+
+                const segundos =
+                    Math.floor(
+                        (
+                            new Date()
+                            -
+                            ultimaLectura[id]
+                        )
+                        /
+                        1000
+                    );
+
+
+                const elemento =
+                    document
+                    .getElementById(
+                        "ultima-" + id
+                    );
+
+
+                if (
+                    segundos
+                    <=
+                    2
+                ) {
+
+                    elemento.innerText =
+                        "Ahora";
+
+                }
+
+                else {
+
+                    elemento.innerText =
+                        "Hace "
+                        +
+                        segundos
+                        +
+                        " s";
+
+                }
+
+
+                if (
+                    segundos
+                    >
+                    10
+                ) {
+
+                    const badge =
+                        document
+                        .getElementById(
+                            "badge-" + id
+                        );
+
+
+                    badge.innerText =
+                        "OFFLINE";
+
+
+                    badge.className =
+                        "badge badge-offline";
+
+                }
+
+            }
+        );
+
+    },
+    1000
+);
+
+
+
+/* =========================================================
+   OFFLINE GENERAL
+   ========================================================= */
+
+function marcarTodoOffline() {
+
+    [
+        "torre01",
+        "torre02",
+        "torre03"
+    ]
+    .forEach(
+        function(id) {
+
+            const badge =
+                document
+                .getElementById(
+                    "badge-" + id
+                );
+
+
+            badge.innerText =
+                "OFFLINE";
+
+
+            badge.className =
+                "badge badge-offline";
+
+        }
+    );
+
+}
+
+
+
+/* =========================================================
+   ENTER
+   ========================================================= */
+
+document
+.getElementById(
+    "mqttPassword"
+)
+.addEventListener(
+    "keydown",
+    function(event) {
+
+        if (
+            event.key
+            ===
+            "Enter"
+        ) {
+
+            conectar();
+
+        }
+
+    }
+);
+
+</script>
+
+
 </body>
+
 </html>
