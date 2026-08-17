@@ -1,1920 +1,1337 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>SISMAR | Monitoreo de Secamiento</title>
+<title>SISMAR | Monitoreo Integral de Secamiento</title>
 
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
 <style>
-
 :root {
     --bg: #07100c;
     --panel: #0d1913;
     --panel2: #112219;
+    --panel3: #152b20;
 
     --verde: #20c77a;
     --verde2: #15985e;
     --verdeSoft: rgba(32,199,122,.12);
 
+    --azul: #4aa3ff;
+    --amarillo: #ffc857;
+    --rojo: #ff6470;
+    --gris: #8fa79a;
+
     --texto: #edf8f1;
     --muted: #8fa79a;
-
     --borde: rgba(80,255,160,.11);
 
-    --rojo: #ff6470;
-    --amarillo: #ffc857;
-
-    --sombra:
-        0 12px 35px rgba(0,0,0,.35);
-
+    --sombra: 0 12px 35px rgba(0,0,0,.35);
     --radio: 20px;
 }
-
 
 * {
     box-sizing: border-box;
 }
 
-
 body {
-
     margin: 0;
-
-    font-family:
-        Arial,
-        Helvetica,
-        sans-serif;
-
+    font-family: Arial, Helvetica, sans-serif;
     color: var(--texto);
-
     background:
-        radial-gradient(
-            circle at top right,
-            rgba(32,199,122,.11),
-            transparent 30%
-        ),
-        linear-gradient(
-            180deg,
-            #07100c,
-            #09150f
-        );
-
+        radial-gradient(circle at top right, rgba(32,199,122,.11), transparent 30%),
+        linear-gradient(180deg, #07100c, #09150f);
     min-height: 100vh;
-
 }
 
-
-/* =========================================================
-   HEADER
-   ========================================================= */
+button,
+input {
+    font: inherit;
+}
 
 header {
-
-    border-bottom:
-        1px solid var(--borde);
-
-    background:
-        rgba(6,14,10,.90);
-
-    backdrop-filter:
-        blur(12px);
-
-    position:
-        sticky;
-
+    border-bottom: 1px solid var(--borde);
+    background: rgba(6,14,10,.90);
+    backdrop-filter: blur(12px);
+    position: sticky;
     top: 0;
-
     z-index: 20;
-
 }
-
 
 .header-inner {
-
-    max-width:
-        1400px;
-
-    margin:
-        auto;
-
-    padding:
-        17px 24px;
-
-    display:
-        flex;
-
-    align-items:
-        center;
-
-    justify-content:
-        space-between;
-
-    gap:
-        20px;
-
+    max-width: 1500px;
+    margin: auto;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
 }
-
 
 .marca {
-
-    display:
-        flex;
-
-    align-items:
-        center;
-
-    gap:
-        14px;
-
+    display: flex;
+    align-items: center;
+    gap: 14px;
 }
 
-
-.logo {
-
-    width:
-        54px;
-
-    height:
-        54px;
-
-    border-radius:
-        14px;
-
-    background:
-        var(--verdeSoft);
-
-    border:
-        1px solid var(--borde);
-
-    display:
-        flex;
-
-    align-items:
-        center;
-
-    justify-content:
-        center;
-
-    overflow:
-        hidden;
-
+.logo,
+.login-logo {
+    width: 54px;
+    height: 54px;
+    border-radius: 14px;
+    background: var(--verdeSoft);
+    border: 1px solid var(--borde);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
 }
 
-
-.logo img {
-
-    width:
-        100%;
-
-    height:
-        100%;
-
-    object-fit:
-        contain;
-
-    padding:
-        5px;
-
+.logo img,
+.login-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 5px;
 }
-
 
 .marca h1 {
-
-    margin:
-        0;
-
-    font-size:
-        24px;
-
+    margin: 0;
+    font-size: 24px;
 }
-
 
 .marca p {
-
-    margin:
-        4px 0 0;
-
-    color:
-        var(--muted);
-
-    font-size:
-        13px;
-
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 13px;
 }
 
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
 
 .conexion {
-
-    display:
-        flex;
-
-    align-items:
-        center;
-
-    gap:
-        9px;
-
-    padding:
-        9px 14px;
-
-    border:
-        1px solid var(--borde);
-
-    border-radius:
-        999px;
-
-    background:
-        rgba(255,255,255,.025);
-
-    font-weight:
-        bold;
-
-    font-size:
-        13px;
-
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 14px;
+    border: 1px solid var(--borde);
+    border-radius: 999px;
+    background: rgba(255,255,255,.025);
+    font-weight: bold;
+    font-size: 13px;
 }
-
 
 .punto {
-
-    width:
-        10px;
-
-    height:
-        10px;
-
-    border-radius:
-        50%;
-
-    background:
-        var(--rojo);
-
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--rojo);
 }
-
 
 .punto.online {
-
-    background:
-        var(--verde);
-
-    box-shadow:
-        0 0 13px
-        rgba(32,199,122,.75);
-
+    background: var(--verde);
+    box-shadow: 0 0 13px rgba(32,199,122,.75);
 }
 
+.btn {
+    border: 1px solid var(--borde);
+    border-radius: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+    color: var(--texto);
+    background: rgba(255,255,255,.035);
+    font-weight: bold;
+}
 
-/* =========================================================
-   CONTENIDO
-   ========================================================= */
+.btn:hover {
+    border-color: rgba(32,199,122,.45);
+}
+
+.btn-primary {
+    color: #04140b;
+    border: 0;
+    background: linear-gradient(135deg, var(--verde), var(--verde2));
+}
 
 .contenedor {
-
-    max-width:
-        1400px;
-
-    margin:
-        auto;
-
-    padding:
-        28px 24px;
-
+    max-width: 1500px;
+    margin: auto;
+    padding: 26px 24px;
 }
-
-
-/* =========================================================
-   RESUMEN
-   ========================================================= */
 
 .resumen {
-
-    display:
-        grid;
-
-    grid-template-columns:
-        repeat(4,1fr);
-
-    gap:
-        16px;
-
-    margin-bottom:
-        22px;
-
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
 }
-
 
 .resumen-card {
-
-    background:
-        linear-gradient(
-            180deg,
-            rgba(17,34,25,.96),
-            rgba(11,23,17,.96)
-        );
-
-    border:
-        1px solid var(--borde);
-
-    border-radius:
-        17px;
-
-    padding:
-        18px;
-
-    box-shadow:
-        var(--sombra);
-
+    background: linear-gradient(180deg, rgba(17,34,25,.96), rgba(11,23,17,.96));
+    border: 1px solid var(--borde);
+    border-radius: 17px;
+    padding: 17px;
+    box-shadow: var(--sombra);
 }
-
 
 .resumen-label {
-
-    color:
-        var(--muted);
-
-    font-size:
-        11px;
-
-    letter-spacing:
-        1px;
-
-    text-transform:
-        uppercase;
-
-    margin-bottom:
-        8px;
-
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
 }
-
 
 .resumen-valor {
-
-    font-size:
-        26px;
-
-    font-weight:
-        bold;
-
+    font-size: 24px;
+    font-weight: bold;
 }
 
-
-/* =========================================================
-   TORRES
-   ========================================================= */
+.resumen-valor.alarma {
+    color: var(--rojo);
+}
 
 .torres-grid {
-
-    display:
-        grid;
-
-    grid-template-columns:
-        repeat(3,1fr);
-
-    gap:
-        20px;
-
+    display: grid;
+    grid-template-columns: repeat(3,1fr);
+    gap: 18px;
 }
-
 
 .torre {
-
-    position:
-        relative;
-
-    overflow:
-        hidden;
-
-    background:
-        linear-gradient(
-            180deg,
-            rgba(17,34,25,.97),
-            rgba(10,22,16,.97)
-        );
-
-    border:
-        1px solid var(--borde);
-
-    border-radius:
-        var(--radio);
-
-    padding:
-        23px;
-
-    box-shadow:
-        var(--sombra);
-
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, rgba(17,34,25,.97), rgba(10,22,16,.97));
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    padding: 21px;
+    box-shadow: var(--sombra);
+    transition: border-color .2s, box-shadow .2s;
 }
 
+.torre.torre-alerta {
+    border-color: rgba(255,100,112,.75);
+    box-shadow: 0 0 0 1px rgba(255,100,112,.12), 0 12px 35px rgba(0,0,0,.35);
+}
 
 .torre::before {
-
-    content:
-        "";
-
-    position:
-        absolute;
-
-    width:
-        220px;
-
-    height:
-        220px;
-
-    border-radius:
-        50%;
-
-    right:
-        -90px;
-
-    top:
-        -90px;
-
-    background:
-        radial-gradient(
-            circle,
-            rgba(32,199,122,.14),
-            transparent 68%
-        );
-
-    pointer-events:
-        none;
-
+    content: "";
+    position: absolute;
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    right: -90px;
+    top: -90px;
+    background: radial-gradient(circle, rgba(32,199,122,.14), transparent 68%);
+    pointer-events: none;
 }
-
 
 .torre-header {
-
-    display:
-        flex;
-
-    align-items:
-        center;
-
-    justify-content:
-        space-between;
-
-    gap:
-        10px;
-
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
 }
-
 
 .torre-titulo {
-
-    font-size:
-        21px;
-
-    font-weight:
-        bold;
-
+    font-size: 21px;
+    font-weight: bold;
 }
-
-
-.badge {
-
-    padding:
-        7px 12px;
-
-    border-radius:
-        999px;
-
-    font-size:
-        11px;
-
-    font-weight:
-        bold;
-
-}
-
-
-.badge-online {
-
-    color:
-        #caffdf;
-
-    background:
-        rgba(32,199,122,.14);
-
-    border:
-        1px solid
-        rgba(32,199,122,.20);
-
-}
-
-
-.badge-offline {
-
-    color:
-        #ffd2d6;
-
-    background:
-        rgba(255,100,112,.10);
-
-    border:
-        1px solid
-        rgba(255,100,112,.20);
-
-}
-
-
-.badge-espera {
-
-    color:
-        #ffe2a6;
-
-    background:
-        rgba(255,200,87,.10);
-
-    border:
-        1px solid
-        rgba(255,200,87,.20);
-
-}
-
 
 .sensor-nombre {
-
-    color:
-        var(--muted);
-
-    font-size:
-        13px;
-
-    margin-top:
-        5px;
-
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 5px;
 }
 
-
-.temperatura {
-
-    text-align:
-        center;
-
-    margin:
-        38px 0;
-
+.badges {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
-
-.temp-label {
-
-    color:
-        var(--muted);
-
-    font-size:
-        11px;
-
-    letter-spacing:
-        1.2px;
-
-    text-transform:
-        uppercase;
-
+.badge {
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: bold;
+    white-space: nowrap;
 }
 
-
-.temp-numero {
-
-    margin-top:
-        9px;
-
-    font-size:
-        64px;
-
-    line-height:
-        1;
-
-    font-weight:
-        bold;
-
-    color:
-        var(--verde);
-
-    text-shadow:
-        0 0 20px
-        rgba(32,199,122,.15);
-
+.badge-online {
+    color: #caffdf;
+    background: rgba(32,199,122,.14);
+    border: 1px solid rgba(32,199,122,.20);
 }
 
-
-.temp-unidad {
-
-    font-size:
-        25px;
-
-    color:
-        var(--texto);
-
+.badge-offline {
+    color: #ffd2d6;
+    background: rgba(255,100,112,.10);
+    border: 1px solid rgba(255,100,112,.20);
 }
 
+.badge-espera {
+    color: #ffe2a6;
+    background: rgba(255,200,87,.10);
+    border: 1px solid rgba(255,200,87,.20);
+}
+
+.badge-alarma {
+    color: #ffd2d6;
+    background: rgba(255,100,112,.16);
+    border: 1px solid rgba(255,100,112,.32);
+}
+
+.metric-principal {
+    margin: 26px 0 16px;
+    padding: 18px;
+    text-align: center;
+    border: 1px solid rgba(32,199,122,.10);
+    border-radius: 17px;
+    background: rgba(32,199,122,.045);
+}
+
+.metric-label {
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 1.1px;
+    text-transform: uppercase;
+}
+
+.metric-numero {
+    margin-top: 8px;
+    font-size: 49px;
+    line-height: 1;
+    font-weight: bold;
+    color: var(--verde);
+}
+
+.metric-numero.alerta {
+    color: var(--rojo);
+}
+
+.metric-unidad {
+    font-size: 20px;
+    color: var(--texto);
+}
+
+.metricas-secundarias {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.mini-metric {
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.025);
+    border: 1px solid rgba(255,255,255,.055);
+    min-height: 100px;
+}
+
+.mini-label {
+    color: var(--muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .7px;
+    min-height: 25px;
+}
+
+.mini-value {
+    margin-top: 7px;
+    font-size: 25px;
+    font-weight: bold;
+}
+
+.mini-source {
+    margin-top: 6px;
+    font-size: 10px;
+    color: var(--muted);
+}
+
+.hydronix-box {
+    margin-top: 10px;
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(74,163,255,.045);
+    border: 1px solid rgba(74,163,255,.13);
+}
+
+.hydronix-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: center;
+}
+
+.hydronix-title {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: .8px;
+    text-transform: uppercase;
+}
+
+.hydronix-value {
+    margin-top: 8px;
+    font-size: 28px;
+    font-weight: bold;
+    color: var(--azul);
+}
+
+.alarmas-torre {
+    margin-top: 14px;
+    border-top: 1px solid rgba(255,255,255,.06);
+    padding-top: 13px;
+}
+
+.alarma-linea {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: center;
+    margin: 8px 0;
+    font-size: 11px;
+}
+
+.alarma-linea span:first-child {
+    color: var(--muted);
+}
+
+.limites {
+    text-align: right;
+}
 
 .datos {
-
-    border-top:
-        1px solid rgba(255,255,255,.06);
-
-    padding-top:
-        17px;
-
+    margin-top: 13px;
+    border-top: 1px solid rgba(255,255,255,.06);
+    padding-top: 12px;
 }
-
 
 .fila {
-
-    display:
-        flex;
-
-    justify-content:
-        space-between;
-
-    gap:
-        10px;
-
-    margin:
-        11px 0;
-
-    font-size:
-        13px;
-
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 9px 0;
+    font-size: 11px;
 }
-
 
 .fila span:first-child {
-
-    color:
-        var(--muted);
-
+    color: var(--muted);
 }
-
 
 .fila strong {
-
-    text-align:
-        right;
-
+    text-align: right;
 }
-
-
-/* =========================================================
-   HISTORICO
-   ========================================================= */
 
 .historico {
-
-    margin-top:
-        22px;
-
-    padding:
-        23px;
-
-    background:
-        linear-gradient(
-            180deg,
-            rgba(17,34,25,.96),
-            rgba(10,22,16,.96)
-        );
-
-    border:
-        1px solid var(--borde);
-
-    border-radius:
-        var(--radio);
-
-    box-shadow:
-        var(--sombra);
-
+    margin-top: 20px;
+    padding: 21px;
+    background: linear-gradient(180deg, rgba(17,34,25,.96), rgba(10,22,16,.96));
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    box-shadow: var(--sombra);
 }
-
 
 .hist-header {
-
-    display:
-        flex;
-
-    align-items:
-        center;
-
-    justify-content:
-        space-between;
-
-    gap:
-        20px;
-
-    flex-wrap:
-        wrap;
-
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
 }
-
 
 .hist-header h2 {
-
-    margin:
-        0;
-
-    font-size:
-        20px;
-
+    margin: 0;
+    font-size: 19px;
 }
-
 
 .hist-header p {
-
-    margin:
-        5px 0 0;
-
-    color:
-        var(--muted);
-
-    font-size:
-        13px;
-
+    margin: 5px 0 0;
+    color: var(--muted);
+    font-size: 12px;
 }
-
 
 .leyenda {
-
-    display:
-        flex;
-
-    flex-wrap:
-        wrap;
-
-    gap:
-        15px;
-
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
 }
-
 
 .leyenda-item {
-
-    display:
-        flex;
-
-    align-items:
-        center;
-
-    gap:
-        7px;
-
-    font-size:
-        12px;
-
-    color:
-        var(--muted);
-
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    color: var(--muted);
 }
-
 
 .leyenda-color {
-
-    width:
-        22px;
-
-    height:
-        3px;
-
-    border-radius:
-        3px;
-
+    width: 22px;
+    height: 3px;
+    border-radius: 3px;
 }
 
-
-.linea1 {
-    background: #20c77a;
-}
-
-.linea2 {
-    background: #4aa3ff;
-}
-
-.linea3 {
-    background: #ffc857;
-}
-
+.linea1 { background: #20c77a; }
+.linea2 { background: #4aa3ff; }
+.linea3 { background: #ffc857; }
 
 .grafica {
-
-    width:
-        100%;
-
-    height:
-        290px;
-
-    margin-top:
-        20px;
-
-    overflow:
-        hidden;
-
-    border-radius:
-        15px;
-
-    border:
-        1px solid rgba(255,255,255,.05);
-
+    width: 100%;
+    height: 270px;
+    margin-top: 18px;
+    overflow: hidden;
+    border-radius: 15px;
+    border: 1px solid rgba(255,255,255,.05);
     background:
-        linear-gradient(
-            to right,
-            rgba(255,255,255,.025) 1px,
-            transparent 1px
-        ),
-        linear-gradient(
-            to top,
-            rgba(255,255,255,.025) 1px,
-            transparent 1px
-        );
-
-    background-size:
-        12.5% 20%;
-
+        linear-gradient(to right, rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(to top, rgba(255,255,255,.025) 1px, transparent 1px);
+    background-size: 12.5% 20%;
 }
-
 
 .grafica svg {
-
-    width:
-        100%;
-
-    height:
-        100%;
-
+    width: 100%;
+    height: 100%;
 }
-
-
-/* =========================================================
-   LOGIN
-   ========================================================= */
 
 .overlay {
-
-    position:
-        fixed;
-
-    inset:
-        0;
-
-    z-index:
-        999;
-
-    display:
-        flex;
-
-    align-items:
-        center;
-
-    justify-content:
-        center;
-
-    padding:
-        20px;
-
-    background:
-        rgba(4,10,7,.85);
-
-    backdrop-filter:
-        blur(7px);
-
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(4,10,7,.85);
+    backdrop-filter: blur(7px);
 }
 
-
-.login {
-
-    width:
-        100%;
-
-    max-width:
-        420px;
-
-    padding:
-        29px;
-
-    border-radius:
-        23px;
-
-    background:
-        linear-gradient(
-            180deg,
-            #12251b,
-            #0a1710
-        );
-
-    border:
-        1px solid var(--borde);
-
-    box-shadow:
-        var(--sombra);
-
+.overlay.oculto {
+    display: none;
 }
 
+.login,
+.modal {
+    width: 100%;
+    max-width: 460px;
+    max-height: 92vh;
+    overflow: auto;
+    padding: 27px;
+    border-radius: 23px;
+    background: linear-gradient(180deg, #12251b, #0a1710);
+    border: 1px solid var(--borde);
+    box-shadow: var(--sombra);
+}
+
+.modal {
+    max-width: 900px;
+}
 
 .login-marca {
-
-    display:
-        flex;
-
-    align-items:
-        center;
-
-    gap:
-        13px;
-
-    margin-bottom:
-        20px;
-
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    margin-bottom: 18px;
 }
 
-
-.login-logo {
-
-    width:
-        55px;
-
-    height:
-        55px;
-
-    border-radius:
-        14px;
-
-    background:
-        var(--verdeSoft);
-
-    overflow:
-        hidden;
-
+.login h2,
+.modal h2 {
+    margin: 0;
 }
 
-
-.login-logo img {
-
-    width:
-        100%;
-
-    height:
-        100%;
-
-    object-fit:
-        contain;
-
-    padding:
-        5px;
-
+.login p,
+.modal p {
+    color: var(--muted);
+    line-height: 1.5;
+    font-size: 13px;
 }
 
-
-.login h2 {
-
-    margin:
-        0;
-
+.login input,
+.modal input {
+    width: 100%;
+    padding: 11px;
+    color: white;
+    background: rgba(255,255,255,.035);
+    border: 1px solid rgba(255,255,255,.09);
+    border-radius: 10px;
+    outline: none;
 }
-
-
-.login p {
-
-    color:
-        var(--muted);
-
-    line-height:
-        1.5;
-
-    font-size:
-        14px;
-
-}
-
 
 .login input {
-
-    width:
-        100%;
-
-    margin-top:
-        11px;
-
-    padding:
-        14px;
-
-    color:
-        white;
-
-    background:
-        rgba(255,255,255,.035);
-
-    border:
-        1px solid rgba(255,255,255,.09);
-
-    border-radius:
-        12px;
-
-    outline:
-        none;
-
+    margin-top: 11px;
+    padding: 14px;
 }
 
-
-.login input:focus {
-
-    border-color:
-        rgba(32,199,122,.50);
-
+.login input:focus,
+.modal input:focus {
+    border-color: rgba(32,199,122,.50);
 }
-
 
 .login button {
-
-    width:
-        100%;
-
-    margin-top:
-        13px;
-
-    padding:
-        14px;
-
-    border:
-        0;
-
-    border-radius:
-        12px;
-
-    cursor:
-        pointer;
-
-    font-weight:
-        bold;
-
-    color:
-        #04140b;
-
-    background:
-        linear-gradient(
-            135deg,
-            var(--verde),
-            var(--verde2)
-        );
-
+    width: 100%;
+    margin-top: 13px;
+    padding: 14px;
 }
 
-
-.login-error {
-
-    min-height:
-        20px;
-
-    margin-top:
-        10px;
-
-    font-size:
-        13px;
-
-    color:
-        var(--rojo);
-
+.login-error,
+.config-status {
+    min-height: 20px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--rojo);
 }
 
+.config-status.ok {
+    color: var(--verde);
+}
 
-/* =========================================================
-   FOOTER
-   ========================================================= */
+.config-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.config-torre {
+    padding: 14px;
+    border-radius: 15px;
+    border: 1px solid rgba(255,255,255,.07);
+    background: rgba(255,255,255,.025);
+}
+
+.config-torre h3 {
+    margin: 0 0 12px;
+    font-size: 16px;
+}
+
+.config-seccion {
+    margin-top: 12px;
+}
+
+.config-seccion-title {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: .7px;
+}
+
+.campos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.campo label {
+    display: block;
+    color: var(--muted);
+    font-size: 10px;
+    margin-bottom: 5px;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 9px;
+    margin-top: 18px;
+}
+
+.aviso-hydronix {
+    margin-top: 20px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    color: #c9d9ff;
+    background: rgba(74,163,255,.06);
+    border: 1px solid rgba(74,163,255,.14);
+    font-size: 12px;
+    line-height: 1.5;
+}
 
 footer {
-
-    text-align:
-        center;
-
-    padding:
-        25px;
-
-    color:
-        var(--muted);
-
-    font-size:
-        12px;
-
+    text-align: center;
+    padding: 24px;
+    color: var(--muted);
+    font-size: 11px;
 }
 
-
-/* =========================================================
-   RESPONSIVE
-   ========================================================= */
-
-@media(max-width:1050px) {
+@media(max-width:1200px) {
+    .resumen {
+        grid-template-columns: repeat(3,1fr);
+    }
 
     .torres-grid {
-        grid-template-columns:
-            1fr;
+        grid-template-columns: 1fr;
     }
-
-    .resumen {
-        grid-template-columns:
-            repeat(2,1fr);
-    }
-
 }
 
+@media(max-width:850px) {
+    .config-grid {
+        grid-template-columns: 1fr;
+    }
+}
 
-@media(max-width:600px) {
-
+@media(max-width:650px) {
     .header-inner {
-
-        align-items:
-            flex-start;
-
-        flex-direction:
-            column;
-
+        align-items: flex-start;
+        flex-direction: column;
     }
 
     .contenedor {
-
-        padding:
-            18px 14px;
-
+        padding: 18px 13px;
     }
 
     .resumen {
-
-        grid-template-columns:
-            1fr 1fr;
-
+        grid-template-columns: 1fr 1fr;
     }
 
-    .temp-numero {
-
-        font-size:
-            54px;
-
+    .metricas-secundarias {
+        grid-template-columns: 1fr;
     }
 
+    .metric-numero {
+        font-size: 43px;
+    }
 }
-
 </style>
-
 </head>
-
 
 <body>
 
-
-<!-- =========================================================
-     LOGIN
-     ========================================================= -->
-
-<div
-    class="overlay"
-    id="loginOverlay"
->
-
-<div class="login">
-
-    <div class="login-marca">
-
-        <div class="login-logo">
-
-            <img
-                src="logo-sismar.png"
-                alt="SISMAR"
-            >
-
-        </div>
-
-        <div>
-
-            <h2>
-                SISMAR
-            </h2>
-
-            <div
-                style="
-                    color:var(--muted);
-                    font-size:13px;
-                    margin-top:3px;
-                "
-            >
-                Monitoreo de Secamiento
+<div class="overlay" id="loginOverlay">
+    <div class="login">
+        <div class="login-marca">
+            <div class="login-logo">
+                <img src="logo-sismar.png" alt="SISMAR">
             </div>
 
+            <div>
+                <h2>SISMAR</h2>
+                <div style="color:var(--muted);font-size:13px;margin-top:3px">
+                    Monitoreo Integral de Secamiento
+                </div>
+            </div>
         </div>
 
+        <p>
+            Ingresa la contraseña MQTT para acceder al monitoreo remoto.
+        </p>
+
+        <input
+            id="mqttPassword"
+            type="password"
+            placeholder="Contraseña MQTT"
+        >
+
+        <button class="btn btn-primary" onclick="conectar()">
+            INGRESAR
+        </button>
+
+        <div class="login-error" id="loginError"></div>
     </div>
-
-
-    <p>
-        Ingresa la contraseña MQTT
-        para acceder al monitoreo remoto.
-    </p>
-
-
-    <input
-        id="mqttPassword"
-        type="password"
-        placeholder="Contraseña MQTT"
-    >
-
-
-    <button
-        onclick="conectar()"
-    >
-        INGRESAR
-    </button>
-
-
-    <div
-        class="login-error"
-        id="loginError"
-    ></div>
-
-</div>
-
 </div>
 
 
+<div class="overlay oculto" id="configOverlay">
+    <div class="modal">
+        <h2>Configuración de alarmas</h2>
 
-<!-- =========================================================
-     HEADER
-     ========================================================= -->
+        <p>
+            Límites de temperatura baja y alta por torre.
+            Deja un campo vacío para desactivar ese límite.
+        </p>
+
+        <div class="config-grid" id="configGrid"></div>
+
+        <div class="config-status" id="configStatus"></div>
+
+        <div class="modal-actions">
+            <button class="btn" onclick="cerrarConfiguracion()">
+                CANCELAR
+            </button>
+
+            <button class="btn btn-primary" onclick="guardarAlarmas()">
+                GUARDAR EN PICO
+            </button>
+        </div>
+    </div>
+</div>
+
 
 <header>
+    <div class="header-inner">
 
-<div class="header-inner">
+        <div class="marca">
+            <div class="logo">
+                <img src="logo-sismar.png" alt="SISMAR">
+            </div>
 
-    <div class="marca">
-
-        <div class="logo">
-
-            <img
-                src="logo-sismar.png"
-                alt="SISMAR"
-            >
-
+            <div>
+                <h1>SISMAR</h1>
+                <p>
+                    Monitoreo Integral de Secamiento · 3 Torres
+                </p>
+            </div>
         </div>
 
+        <div class="header-actions">
+            <button class="btn" onclick="abrirConfiguracion()">
+                ⚙ ALARMAS
+            </button>
 
-        <div>
-
-            <h1>
-                SISMAR
-            </h1>
-
-            <p>
-                Monitoreo de Secamiento
-                · 3 Torres
-            </p>
-
+            <div class="conexion">
+                <span class="punto" id="puntoConexion"></span>
+                <span id="textoConexion">Desconectado</span>
+            </div>
         </div>
 
     </div>
-
-
-    <div class="conexion">
-
-        <span
-            class="punto"
-            id="puntoConexion"
-        ></span>
-
-        <span
-            id="textoConexion"
-        >
-            Desconectado
-        </span>
-
-    </div>
-
-</div>
-
 </header>
 
 
-
-<!-- =========================================================
-     CONTENIDO
-     ========================================================= -->
-
 <main class="contenedor">
 
+    <section class="resumen">
 
-<!-- RESUMEN -->
-
-<section class="resumen">
-
-    <div class="resumen-card">
-
-        <div class="resumen-label">
-            Sensores Online
+        <div class="resumen-card">
+            <div class="resumen-label">
+                Sensores Pico Online
+            </div>
+            <div class="resumen-valor" id="sensoresOnline">
+                0 / 6
+            </div>
         </div>
 
-        <div
-            class="resumen-valor"
-            id="sensoresOnline"
-        >
-            0 / 3
+        <div class="resumen-card">
+            <div class="resumen-label">
+                Temp. arroz promedio
+            </div>
+            <div class="resumen-valor" id="tempArrozProm">
+                --
+            </div>
         </div>
 
+        <div class="resumen-card">
+            <div class="resumen-label">
+                Temp. ambiente promedio
+            </div>
+            <div class="resumen-valor" id="tempAmbProm">
+                --
+            </div>
+        </div>
+
+        <div class="resumen-card">
+            <div class="resumen-label">
+                Humedad ambiente promedio
+            </div>
+            <div class="resumen-valor" id="humAmbProm">
+                --
+            </div>
+        </div>
+
+        <div class="resumen-card">
+            <div class="resumen-label">
+                Alarmas activas
+            </div>
+            <div class="resumen-valor" id="alarmasActivas">
+                0
+            </div>
+        </div>
+
+    </section>
+
+
+    <section class="torres-grid" id="torresGrid"></section>
+
+
+    <div class="aviso-hydronix">
+        <strong>Hydronix Hydro-Mix XT:</strong>
+        el dashboard ya está preparado para recibir la humedad del arroz
+        mediante el topic MQTT
+        <code>sismar/secador01/hydronix/telemetria</code>.
+        Hasta que el puente Hydro-Com/RS485 → MQTT esté terminado,
+        aparecerá como “PENDIENTE INTEGRACIÓN”.
     </div>
 
 
-    <div class="resumen-card">
+    <section class="historico">
 
-        <div class="resumen-label">
-            Temperatura máxima
-        </div>
+        <div class="hist-header">
 
-        <div
-            class="resumen-valor"
-            id="tempMaxima"
-        >
-            --
-        </div>
-
-    </div>
-
-
-    <div class="resumen-card">
-
-        <div class="resumen-label">
-            Temperatura mínima
-        </div>
-
-        <div
-            class="resumen-valor"
-            id="tempMinima"
-        >
-            --
-        </div>
-
-    </div>
-
-
-    <div class="resumen-card">
-
-        <div class="resumen-label">
-            Promedio
-        </div>
-
-        <div
-            class="resumen-valor"
-            id="tempPromedio"
-        >
-            --
-        </div>
-
-    </div>
-
-</section>
-
-
-
-<!-- =========================================================
-     TORRES
-     ========================================================= -->
-
-<section class="torres-grid">
-
-
-<!-- TORRE 1 -->
-
-<div
-    class="torre"
-    id="card-torre01"
->
-
-    <div class="torre-header">
-
-        <div>
-
-            <div class="torre-titulo">
-                TORRE 1
+            <div>
+                <h2>Temperatura del arroz en tiempo real</h2>
+                <p>
+                    Últimas 60 lecturas PT100 recibidas por torre.
+                </p>
             </div>
 
-            <div
-                class="sensor-nombre"
-                id="sensor-torre01"
-            >
-                PT100-01
+            <div class="leyenda">
+                <div class="leyenda-item">
+                    <span class="leyenda-color linea1"></span>
+                    Torre 1
+                </div>
+
+                <div class="leyenda-item">
+                    <span class="leyenda-color linea2"></span>
+                    Torre 2
+                </div>
+
+                <div class="leyenda-item">
+                    <span class="leyenda-color linea3"></span>
+                    Torre 3
+                </div>
             </div>
 
         </div>
 
+        <div class="grafica">
+            <svg viewBox="0 0 1200 270" preserveAspectRatio="none">
 
-        <div
-            class="badge badge-offline"
-            id="badge-torre01"
-        >
-            OFFLINE
+                <polyline
+                    id="linea-torre01"
+                    fill="none"
+                    stroke="#20c77a"
+                    stroke-width="4"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    points=""
+                />
+
+                <polyline
+                    id="linea-torre02"
+                    fill="none"
+                    stroke="#4aa3ff"
+                    stroke-width="4"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    points=""
+                />
+
+                <polyline
+                    id="linea-torre03"
+                    fill="none"
+                    stroke="#ffc857"
+                    stroke-width="4"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    points=""
+                />
+
+            </svg>
         </div>
 
-    </div>
-
-
-    <div class="temperatura">
-
-        <div class="temp-label">
-            Temperatura actual
-        </div>
-
-        <div
-            class="temp-numero"
-            id="temp-torre01"
-        >
-            --
-            <span class="temp-unidad">
-                °C
-            </span>
-        </div>
-
-    </div>
-
-
-    <div class="datos">
-
-        <div class="fila">
-
-            <span>
-                Resistencia
-            </span>
-
-            <strong
-                id="res-torre01"
-            >
-                --
-            </strong>
-
-        </div>
-
-
-        <div class="fila">
-
-            <span>
-                MAX31865
-            </span>
-
-            <strong
-                id="max-torre01"
-            >
-                --
-            </strong>
-
-        </div>
-
-
-        <div class="fila">
-
-            <span>
-                Configuración
-            </span>
-
-            <strong
-                id="hilos-torre01"
-            >
-                --
-            </strong>
-
-        </div>
-
-
-        <div class="fila">
-
-            <span>
-                Última lectura
-            </span>
-
-            <strong
-                id="ultima-torre01"
-            >
-                --
-            </strong>
-
-        </div>
-
-    </div>
-
-</div>
-
-
-
-<!-- TORRE 2 -->
-
-<div
-    class="torre"
-    id="card-torre02"
->
-
-    <div class="torre-header">
-
-        <div>
-
-            <div class="torre-titulo">
-                TORRE 2
-            </div>
-
-            <div
-                class="sensor-nombre"
-                id="sensor-torre02"
-            >
-                PT100-02
-            </div>
-
-        </div>
-
-
-        <div
-            class="badge badge-espera"
-            id="badge-torre02"
-        >
-            SIN HARDWARE
-        </div>
-
-    </div>
-
-
-    <div class="temperatura">
-
-        <div class="temp-label">
-            Temperatura actual
-        </div>
-
-        <div
-            class="temp-numero"
-            id="temp-torre02"
-        >
-            --
-            <span class="temp-unidad">
-                °C
-            </span>
-        </div>
-
-    </div>
-
-
-    <div class="datos">
-
-        <div class="fila">
-
-            <span>
-                Resistencia
-            </span>
-
-            <strong
-                id="res-torre02"
-            >
-                --
-            </strong>
-
-        </div>
-
-
-        <div class="fila">
-
-            <span>
-                MAX31865
-            </span>
-
-            <strong
-                id="max-torre02"
-            >
-                NO DETECTADO
-            </strong>
-
-        </div>
-
-
-        <div class="fila">
-
-            <span>
-                Configuración
-            </span>
-
-            <strong
-                id="hilos-torre02"
-            >
-                --
-            </strong>
-
-        </div>
-
-
-        <div class="fila">
-
-            <span>
-                Última lectura
-            </span>
-
-            <strong
-                id="ultima-torre02"
-            >
-                --
-            </strong>
-
-        </div>
-
-    </div>
-
-</div>
-
-
-
-<!-- TORRE 3 -->
-
-<div
-    class="torre"
-    id="card-torre03"
->
-
-    <div class="torre-header">
-
-        <div>
-
-            <div class="torre-titulo">
-                TORRE 3
-            </div>
-
-            <div
-                class="sensor-nombre"
-                id="sensor-torre03"
-            >
-                PT100-03
-            </div>
-
-        </div>
-
-
-        <div
-            class="badge badge-espera"
-            id="badge-torre03"
-        >
-            SIN HARDWARE
-        </div>
-
-    </div>
-
-
-    <div class="temperatura">
-
-        <div class="temp-label">
-            Temperatura actual
-        </div>
-
-        <div
-            class="temp-numero"
-            id="temp-torre03"
-        >
-            --
-            <span class="temp-unidad">
-                °C
-            </span>
-        </div>
-
-    </div>
-
-
-    <div class="datos">
-
-        <div class="fila">
-
-            <span>
-                Resistencia
-            </span>
-
-            <strong
-                id="res-torre03"
-            >
-                --
-            </strong>
-
-        </div>
-
-
-        <div class="fila">
-
-            <span>
-                MAX31865
-            </span>
-
-            <strong
-                id="max-torre03"
-            >
-                NO DETECTADO
-            </strong>
-
-        </div>
-
-
-        <div class="fila">
-
-            <span>
-                Configuración
-            </span>
-
-            <strong
-                id="hilos-torre03"
-            >
-                --
-            </strong>
-
-        </div>
-
-
-        <div class="fila">
-
-            <span>
-                Última lectura
-            </span>
-
-            <strong
-                id="ultima-torre03"
-            >
-                --
-            </strong>
-
-        </div>
-
-    </div>
-
-</div>
-
-
-</section>
-
-
-
-<!-- =========================================================
-     GRAFICA
-     ========================================================= -->
-
-<section class="historico">
-
-    <div class="hist-header">
-
-        <div>
-
-            <h2>
-                Temperatura en Tiempo Real
-            </h2>
-
-            <p>
-                Últimas 60 lecturas recibidas
-                por torre.
-            </p>
-
-        </div>
-
-
-        <div class="leyenda">
-
-            <div class="leyenda-item">
-
-                <span
-                    class="leyenda-color linea1"
-                ></span>
-
-                Torre 1
-
-            </div>
-
-
-            <div class="leyenda-item">
-
-                <span
-                    class="leyenda-color linea2"
-                ></span>
-
-                Torre 2
-
-            </div>
-
-
-            <div class="leyenda-item">
-
-                <span
-                    class="leyenda-color linea3"
-                ></span>
-
-                Torre 3
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-    <div class="grafica">
-
-        <svg
-            viewBox="0 0 1200 290"
-            preserveAspectRatio="none"
-        >
-
-            <polyline
-                id="linea-torre01"
-                fill="none"
-                stroke="#20c77a"
-                stroke-width="4"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                points=""
-            />
-
-
-            <polyline
-                id="linea-torre02"
-                fill="none"
-                stroke="#4aa3ff"
-                stroke-width="4"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                points=""
-            />
-
-
-            <polyline
-                id="linea-torre03"
-                fill="none"
-                stroke="#ffc857"
-                stroke-width="4"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                points=""
-            />
-
-        </svg>
-
-    </div>
-
-</section>
-
+    </section>
 
 </main>
 
 
-
 <footer>
-
-SISMAR · PT100 · MAX31865 · Raspberry Pi Pico W · MQTT
-
+    SISMAR · PT100/MAX31865 · DHT22 · Hydronix Hydro-Mix XT · Raspberry Pi Pico W · MQTT
 </footer>
 
 
-
 <script>
-
-
-/* =========================================================
-   MQTT
-   ========================================================= */
-
 const BROKER =
     "wss://165a1839496b496da003fd2a5f5f10cd.s1.eu.hivemq.cloud:8884/mqtt";
-
 
 const MQTT_USER =
     "dashboard_sismar";
 
-
 const TOPIC_TELEMETRIA =
     "sismar/secador01/telemetria";
 
-
 const TOPIC_ESTADO =
     "sismar/secador01/estado";
+
+const TOPIC_HYDRONIX =
+    "sismar/secador01/hydronix/telemetria";
+
+const TOPIC_ALARMAS_SET =
+    "sismar/secador01/config/alarmas/set";
+
+const TOPIC_ALARMAS_STATE =
+    "sismar/secador01/config/alarmas/state";
+
+
+const TORRES = [
+    {
+        id: "torre01",
+        nombre: "TORRE 1",
+        pt100: "PT100-01",
+        dht: "DHT22-01",
+        maxCs: "GP17",
+        dhtPin: "GP22"
+    },
+    {
+        id: "torre02",
+        nombre: "TORRE 2",
+        pt100: "PT100-02",
+        dht: "DHT22-02",
+        maxCs: "GP20",
+        dhtPin: "GP26"
+    },
+    {
+        id: "torre03",
+        nombre: "TORRE 3",
+        pt100: "PT100-03",
+        dht: "DHT22-03",
+        maxCs: "GP21",
+        dhtPin: "GP27"
+    }
+];
 
 
 let client = null;
 
 
 const historial = {
-
     torre01: [],
-
     torre02: [],
-
     torre03: []
-
 };
 
 
 const ultimaLectura = {
-
     torre01: null,
-
     torre02: null,
-
     torre03: null
-
 };
 
 
+const estadoHydronix = {
+    torre01: null,
+    torre02: null,
+    torre03: null
+};
 
-/* =========================================================
-   CONEXION
-   ========================================================= */
+
+let configAlarmas = {
+    torre01: {
+        arroz_min: null,
+        arroz_max: null,
+        ambiente_min: null,
+        ambiente_max: null
+    },
+    torre02: {
+        arroz_min: null,
+        arroz_max: null,
+        ambiente_min: null,
+        ambiente_max: null
+    },
+    torre03: {
+        arroz_min: null,
+        arroz_max: null,
+        ambiente_min: null,
+        ambiente_max: null
+    }
+};
+
+
+function crearTorres() {
+
+    const contenedor =
+        document.getElementById(
+            "torresGrid"
+        );
+
+    contenedor.innerHTML =
+        TORRES.map(
+            function(torre) {
+
+                return `
+                <div class="torre" id="card-${torre.id}">
+
+                    <div class="torre-header">
+                        <div>
+                            <div class="torre-titulo">
+                                ${torre.nombre}
+                            </div>
+
+                            <div class="sensor-nombre">
+                                ${torre.pt100} · ${torre.dht}
+                            </div>
+                        </div>
+
+                        <div class="badges">
+                            <div
+                                class="badge badge-offline"
+                                id="badge-pt100-${torre.id}"
+                            >
+                                PT100 OFFLINE
+                            </div>
+
+                            <div
+                                class="badge badge-espera"
+                                id="badge-dht-${torre.id}"
+                            >
+                                DHT22 PENDIENTE
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="metric-principal">
+                        <div class="metric-label">
+                            Temperatura del arroz
+                        </div>
+
+                        <div
+                            class="metric-numero"
+                            id="arroz-${torre.id}"
+                        >
+                            --<span class="metric-unidad"> °C</span>
+                        </div>
+
+                        <div class="mini-source">
+                            PT100 + MAX31865 · ${torre.maxCs}
+                        </div>
+                    </div>
+
+
+                    <div class="metricas-secundarias">
+
+                        <div class="mini-metric">
+                            <div class="mini-label">
+                                Temperatura ambiente
+                            </div>
+
+                            <div
+                                class="mini-value"
+                                id="amb-temp-${torre.id}"
+                            >
+                                -- °C
+                            </div>
+
+                            <div class="mini-source">
+                                DHT22 · ${torre.dhtPin}
+                            </div>
+                        </div>
+
+
+                        <div class="mini-metric">
+                            <div class="mini-label">
+                                Humedad ambiente
+                            </div>
+
+                            <div
+                                class="mini-value"
+                                id="amb-hum-${torre.id}"
+                            >
+                                -- %
+                            </div>
+
+                            <div class="mini-source">
+                                DHT22 · HR
+                            </div>
+                        </div>
+
+                    </div>
+
+
+                    <div class="hydronix-box">
+
+                        <div class="hydronix-head">
+                            <div class="hydronix-title">
+                                Humedad del arroz
+                            </div>
+
+                            <div
+                                class="badge badge-espera"
+                                id="badge-hydronix-${torre.id}"
+                            >
+                                PENDIENTE
+                            </div>
+                        </div>
+
+                        <div
+                            class="hydronix-value"
+                            id="hydronix-${torre.id}"
+                        >
+                            -- %
+                        </div>
+
+                        <div class="mini-source">
+                            Hydronix Hydro-Mix XT · RS485
+                        </div>
+
+                    </div>
+
+
+                    <div class="alarmas-torre">
+
+                        <div class="alarma-linea">
+                            <span>
+                                Alarma temperatura arroz
+                            </span>
+
+                            <strong
+                                id="alarma-arroz-${torre.id}"
+                            >
+                                SIN CONFIGURAR
+                            </strong>
+                        </div>
+
+                        <div class="alarma-linea">
+                            <span>
+                                Límites arroz
+                            </span>
+
+                            <strong
+                                class="limites"
+                                id="limites-arroz-${torre.id}"
+                            >
+                                -- / -- °C
+                            </strong>
+                        </div>
+
+                        <div class="alarma-linea">
+                            <span>
+                                Alarma temperatura ambiente
+                            </span>
+
+                            <strong
+                                id="alarma-amb-${torre.id}"
+                            >
+                                SIN CONFIGURAR
+                            </strong>
+                        </div>
+
+                        <div class="alarma-linea">
+                            <span>
+                                Límites ambiente
+                            </span>
+
+                            <strong
+                                class="limites"
+                                id="limites-amb-${torre.id}"
+                            >
+                                -- / -- °C
+                            </strong>
+                        </div>
+
+                    </div>
+
+
+                    <div class="datos">
+
+                        <div class="fila">
+                            <span>Resistencia PT100</span>
+                            <strong id="res-${torre.id}">--</strong>
+                        </div>
+
+                        <div class="fila">
+                            <span>MAX31865 / Fault</span>
+                            <strong id="max-${torre.id}">--</strong>
+                        </div>
+
+                        <div class="fila">
+                            <span>Configuración PT100</span>
+                            <strong id="hilos-${torre.id}">3 hilos</strong>
+                        </div>
+
+                        <div class="fila">
+                            <span>Última lectura</span>
+                            <strong id="ultima-${torre.id}">--</strong>
+                        </div>
+
+                    </div>
+
+                </div>
+                `;
+            }
+        )
+        .join("");
+}
+
+
+function crearFormularioAlarmas() {
+
+    const grid =
+        document.getElementById(
+            "configGrid"
+        );
+
+    grid.innerHTML =
+        TORRES.map(
+            function(torre) {
+
+                return `
+                <div class="config-torre">
+
+                    <h3>${torre.nombre}</h3>
+
+                    <div class="config-seccion">
+                        <div class="config-seccion-title">
+                            Temperatura del arroz
+                        </div>
+
+                        <div class="campos">
+                            <div class="campo">
+                                <label>Baja °C</label>
+
+                                <input
+                                    id="cfg-${torre.id}-arroz-min"
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="Sin límite"
+                                >
+                            </div>
+
+                            <div class="campo">
+                                <label>Alta °C</label>
+
+                                <input
+                                    id="cfg-${torre.id}-arroz-max"
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="Sin límite"
+                                >
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="config-seccion">
+                        <div class="config-seccion-title">
+                            Temperatura ambiente
+                        </div>
+
+                        <div class="campos">
+                            <div class="campo">
+                                <label>Baja °C</label>
+
+                                <input
+                                    id="cfg-${torre.id}-amb-min"
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="Sin límite"
+                                >
+                            </div>
+
+                            <div class="campo">
+                                <label>Alta °C</label>
+
+                                <input
+                                    id="cfg-${torre.id}-amb-max"
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="Sin límite"
+                                >
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                `;
+            }
+        )
+        .join("");
+}
+
 
 function conectar() {
 
@@ -1925,7 +1342,6 @@ function conectar() {
         )
         .value;
 
-
     if (!password) {
 
         document
@@ -1933,19 +1349,17 @@ function conectar() {
             "loginError"
         )
         .innerText =
-        "Ingresa la contraseña.";
+            "Ingresa la contraseña.";
 
         return;
-
     }
-
 
     document
     .getElementById(
         "loginError"
     )
     .innerText =
-    "Conectando...";
+        "Conectando...";
 
 
     const clientId =
@@ -1964,25 +1378,12 @@ function conectar() {
         mqtt.connect(
             BROKER,
             {
-
-                clientId:
-                    clientId,
-
-                username:
-                    MQTT_USER,
-
-                password:
-                    password,
-
-                clean:
-                    true,
-
-                reconnectPeriod:
-                    3000,
-
-                connectTimeout:
-                    10000
-
+                clientId: clientId,
+                username: MQTT_USER,
+                password: password,
+                clean: true,
+                reconnectPeriod: 3000,
+                connectTimeout: 10000
             }
         );
 
@@ -1995,24 +1396,27 @@ function conectar() {
             .getElementById(
                 "loginOverlay"
             )
-            .style.display =
-            "none";
-
-
-            cambiarConexion(
-                true
+            .classList.add(
+                "oculto"
             );
 
+            cambiarConexion(true);
 
             client.subscribe(
                 TOPIC_TELEMETRIA
             );
 
-
             client.subscribe(
                 TOPIC_ESTADO
             );
 
+            client.subscribe(
+                TOPIC_HYDRONIX
+            );
+
+            client.subscribe(
+                TOPIC_ALARMAS_STATE
+            );
         }
     );
 
@@ -2020,11 +1424,7 @@ function conectar() {
     client.on(
         "close",
         function() {
-
-            cambiarConexion(
-                false
-            );
-
+            cambiarConexion(false);
         }
     );
 
@@ -2032,11 +1432,7 @@ function conectar() {
     client.on(
         "offline",
         function() {
-
-            cambiarConexion(
-                false
-            );
-
+            cambiarConexion(false);
         }
     );
 
@@ -2045,18 +1441,14 @@ function conectar() {
         "error",
         function(error) {
 
-            console.error(
-                error
-            );
-
+            console.error(error);
 
             document
             .getElementById(
                 "loginError"
             )
             .innerText =
-            "No fue posible conectar.";
-
+                "No fue posible conectar.";
         }
     );
 
@@ -2068,25 +1460,23 @@ function conectar() {
             message
         ) {
 
+            const texto =
+                message.toString();
+
             if (
                 topic ===
                 TOPIC_ESTADO
             ) {
 
                 if (
-                    message
-                    .toString()
-                    .trim()
+                    texto.trim()
                     ===
                     "offline"
                 ) {
-
                     marcarTodoOffline();
-
                 }
 
                 return;
-
             }
 
 
@@ -2094,23 +1484,38 @@ function conectar() {
                 topic ===
                 TOPIC_TELEMETRIA
             ) {
-
                 procesarTelemetria(
-                    message.toString()
+                    texto
                 );
 
+                return;
             }
 
+
+            if (
+                topic ===
+                TOPIC_HYDRONIX
+            ) {
+                procesarHydronix(
+                    texto
+                );
+
+                return;
+            }
+
+
+            if (
+                topic ===
+                TOPIC_ALARMAS_STATE
+            ) {
+                procesarAlarmasState(
+                    texto
+                );
+            }
         }
     );
-
 }
 
-
-
-/* =========================================================
-   CONEXION VISUAL
-   ========================================================= */
 
 function cambiarConexion(
     online
@@ -2122,43 +1527,31 @@ function cambiarConexion(
             "puntoConexion"
         );
 
-
     const texto =
         document
         .getElementById(
             "textoConexion"
         );
 
-
     if (online) {
-
         punto.classList.add(
             "online"
         );
 
         texto.innerText =
             "Conectado";
-
     }
 
     else {
-
         punto.classList.remove(
             "online"
         );
 
         texto.innerText =
             "Desconectado";
-
     }
-
 }
 
-
-
-/* =========================================================
-   TELEMETRIA
-   ========================================================= */
 
 function procesarTelemetria(
     texto
@@ -2171,62 +1564,41 @@ function procesarTelemetria(
                 texto
             );
 
-
         if (
             datos.torres
         ) {
 
-            actualizarTorre(
-                "torre01",
-                datos.torres.torre01
+            TORRES.forEach(
+                function(torre) {
+                    actualizarTorre(
+                        torre.id,
+                        datos.torres[
+                            torre.id
+                        ]
+                    );
+                }
             );
-
-
-            actualizarTorre(
-                "torre02",
-                datos.torres.torre02
-            );
-
-
-            actualizarTorre(
-                "torre03",
-                datos.torres.torre03
-            );
-
         }
-
 
         if (
             datos.resumen
         ) {
-
             actualizarResumen(
                 datos.resumen
             );
-
         }
 
-
         dibujarGrafica();
-
     }
 
     catch(error) {
-
         console.error(
-            "Error JSON:",
+            "Error JSON telemetría:",
             error
         );
-
     }
-
 }
 
-
-
-/* =========================================================
-   ACTUALIZAR TORRE
-   ========================================================= */
 
 function actualizarTorre(
     id,
@@ -2237,35 +1609,24 @@ function actualizarTorre(
         return;
     }
 
-
-    const badge =
-        document
-        .getElementById(
-            "badge-" + id
+    const badgePt100 =
+        document.getElementById(
+            "badge-pt100-" + id
         );
 
+    const badgeDht =
+        document.getElementById(
+            "badge-dht-" + id
+        );
 
-    document
-    .getElementById(
-        "sensor-" + id
-    )
-    .innerText =
-        datos.sensor
-        || "--";
+    const card =
+        document.getElementById(
+            "card-" + id
+        );
 
-
-    document
-    .getElementById(
-        "hilos-" + id
-    )
-    .innerText =
-        datos.hilos
-        ?
-        datos.hilos
-        + " hilos"
-        :
-        "--";
-
+    // ========================================================
+    // PT100
+    // ========================================================
 
     if (
         datos.estado
@@ -2273,16 +1634,15 @@ function actualizarTorre(
         "online"
     ) {
 
-        badge.innerText =
-            "ONLINE";
+        badgePt100.innerText =
+            "PT100 ONLINE";
 
-        badge.className =
+        badgePt100.className =
             "badge badge-online";
-
 
         document
         .getElementById(
-            "temp-" + id
+            "arroz-" + id
         )
         .innerHTML =
             Number(
@@ -2290,7 +1650,7 @@ function actualizarTorre(
             )
             .toFixed(2)
             +
-            '<span class="temp-unidad"> °C</span>';
+            '<span class="metric-unidad"> °C</span>';
 
 
         document
@@ -2332,13 +1692,9 @@ function actualizarTorre(
             >
             60
         ) {
-
             historial[id].shift();
-
         }
-
     }
-
 
     else if (
         datos.estado
@@ -2346,20 +1702,18 @@ function actualizarTorre(
         "hardware_no_disponible"
     ) {
 
-        badge.innerText =
-            "SIN HARDWARE";
+        badgePt100.innerText =
+            "MAX NO DETECTADO";
 
-        badge.className =
+        badgePt100.className =
             "badge badge-espera";
-
 
         document
         .getElementById(
-            "temp-" + id
+            "arroz-" + id
         )
         .innerHTML =
-            '--<span class="temp-unidad"> °C</span>';
-
+            '--<span class="metric-unidad"> °C</span>';
 
         document
         .getElementById(
@@ -2368,25 +1722,21 @@ function actualizarTorre(
         .innerText =
             "--";
 
-
         document
         .getElementById(
             "max-" + id
         )
         .innerText =
             "NO DETECTADO";
-
     }
-
 
     else {
 
-        badge.innerText =
-            "ERROR";
+        badgePt100.innerText =
+            "PT100 ERROR";
 
-        badge.className =
+        badgePt100.className =
             "badge badge-offline";
-
 
         document
         .getElementById(
@@ -2396,77 +1746,344 @@ function actualizarTorre(
             datos.fault
             ||
             "ERROR";
-
     }
 
+
+    document
+    .getElementById(
+        "hilos-" + id
+    )
+    .innerText =
+        datos.hilos
+        ?
+        datos.hilos + " hilos"
+        :
+        "--";
+
+
+    // ========================================================
+    // DHT22
+    // ========================================================
+
+    const ambiente =
+        datos.ambiente
+        ||
+        null;
+
+
+    if (
+        ambiente
+        &&
+        ambiente.estado
+        ===
+        "online"
+    ) {
+
+        badgeDht.innerText =
+            "DHT22 ONLINE";
+
+        badgeDht.className =
+            "badge badge-online";
+
+        document
+        .getElementById(
+            "amb-temp-" + id
+        )
+        .innerText =
+            Number(
+                ambiente.temperatura
+            )
+            .toFixed(1)
+            +
+            " °C";
+
+        document
+        .getElementById(
+            "amb-hum-" + id
+        )
+        .innerText =
+            Number(
+                ambiente.humedad
+            )
+            .toFixed(1)
+            +
+            " %";
+    }
+
+    else {
+
+        badgeDht.innerText =
+            ambiente
+            ?
+            "DHT22 OFFLINE"
+            :
+            "DHT22 PENDIENTE";
+
+        badgeDht.className =
+            ambiente
+            ?
+            "badge badge-offline"
+            :
+            "badge badge-espera";
+
+        document
+        .getElementById(
+            "amb-temp-" + id
+        )
+        .innerText =
+            "-- °C";
+
+        document
+        .getElementById(
+            "amb-hum-" + id
+        )
+        .innerText =
+            "-- %";
+    }
+
+
+    // ========================================================
+    // ALARMAS
+    // ========================================================
+
+    const alarmas =
+        datos.alarmas
+        ||
+        null;
+
+    let torreEnAlarma =
+        false;
+
+    if (alarmas) {
+
+        pintarAlarma(
+            id,
+            "arroz",
+            alarmas.arroz
+        );
+
+        pintarAlarma(
+            id,
+            "amb",
+            alarmas.ambiente
+        );
+
+        if (
+            esAlarmaActiva(
+                alarmas.arroz
+            )
+            ||
+            esAlarmaActiva(
+                alarmas.ambiente
+            )
+        ) {
+            torreEnAlarma = true;
+        }
+    }
+
+
+    card.classList.toggle(
+        "torre-alerta",
+        torreEnAlarma
+    );
+
+
+    document
+    .getElementById(
+        "arroz-" + id
+    )
+    .classList.toggle(
+        "alerta",
+        alarmas
+        &&
+        esAlarmaActiva(
+            alarmas.arroz
+        )
+    );
+
+
+    // Actualizar Hydronix si ya llego por su topic.
+    actualizarHydronixVisual(
+        id
+    );
 }
 
 
+function pintarAlarma(
+    id,
+    tipo,
+    alarma
+) {
 
-/* =========================================================
-   RESUMEN
-   ========================================================= */
+    if (!alarma) {
+        return;
+    }
+
+    const estadoId =
+        tipo === "arroz"
+        ?
+        "alarma-arroz-" + id
+        :
+        "alarma-amb-" + id;
+
+    const limitesId =
+        tipo === "arroz"
+        ?
+        "limites-arroz-" + id
+        :
+        "limites-amb-" + id;
+
+
+    const estado =
+        String(
+            alarma.estado
+            ||
+            "sin_configurar"
+        );
+
+
+    const textos = {
+        normal: "NORMAL",
+        baja: "TEMPERATURA BAJA",
+        alta: "TEMPERATURA ALTA",
+        sin_dato: "SIN DATO",
+        sin_configurar: "SIN CONFIGURAR"
+    };
+
+
+    const elemento =
+        document.getElementById(
+            estadoId
+        );
+
+
+    elemento.innerText =
+        textos[estado]
+        ||
+        estado.toUpperCase();
+
+
+    if (
+        estado === "baja"
+        ||
+        estado === "alta"
+    ) {
+        elemento.style.color =
+            "var(--rojo)";
+    }
+
+    else if (
+        estado === "normal"
+    ) {
+        elemento.style.color =
+            "var(--verde)";
+    }
+
+    else {
+        elemento.style.color =
+            "var(--amarillo)";
+    }
+
+
+    document
+    .getElementById(
+        limitesId
+    )
+    .innerText =
+        formatearLimite(
+            alarma.min
+        )
+        +
+        " / "
+        +
+        formatearLimite(
+            alarma.max
+        )
+        +
+        " °C";
+}
+
+
+function formatearLimite(
+    valor
+) {
+    return (
+        valor === null
+        ||
+        valor === undefined
+    )
+    ?
+    "--"
+    :
+    Number(
+        valor
+    )
+    .toFixed(1);
+}
+
+
+function esAlarmaActiva(
+    alarma
+) {
+    if (!alarma) {
+        return false;
+    }
+
+    return (
+        alarma.estado
+        ===
+        "baja"
+        ||
+        alarma.estado
+        ===
+        "alta"
+    );
+}
+
 
 function actualizarResumen(
     resumen
 ) {
+
+    const online =
+        resumen.sensores_online_total
+        !== undefined
+        ?
+        resumen.sensores_online_total
+        :
+        resumen.sensores_online
+        ||
+        0;
+
+
+    const total =
+        resumen.sensores_total
+        ||
+        6;
+
 
     document
     .getElementById(
         "sensoresOnline"
     )
     .innerText =
-        (
-            resumen.sensores_online
-            || 0
-        )
+        online
         +
-        " / 3";
+        " / "
+        +
+        total;
 
 
     document
     .getElementById(
-        "tempMaxima"
-    )
-    .innerText =
-        resumen.temperatura_maxima
-        !== null
-        ?
-        Number(
-            resumen.temperatura_maxima
-        )
-        .toFixed(2)
-        +
-        " °C"
-        :
-        "--";
-
-
-    document
-    .getElementById(
-        "tempMinima"
-    )
-    .innerText =
-        resumen.temperatura_minima
-        !== null
-        ?
-        Number(
-            resumen.temperatura_minima
-        )
-        .toFixed(2)
-        +
-        " °C"
-        :
-        "--";
-
-
-    document
-    .getElementById(
-        "tempPromedio"
+        "tempArrozProm"
     )
     .innerText =
         resumen.temperatura_promedio
         !== null
+        &&
+        resumen.temperatura_promedio
+        !== undefined
         ?
         Number(
             resumen.temperatura_promedio
@@ -2477,13 +2094,515 @@ function actualizarResumen(
         :
         "--";
 
+
+    document
+    .getElementById(
+        "tempAmbProm"
+    )
+    .innerText =
+        resumen.temperatura_ambiente_promedio
+        !== null
+        &&
+        resumen.temperatura_ambiente_promedio
+        !== undefined
+        ?
+        Number(
+            resumen.temperatura_ambiente_promedio
+        )
+        .toFixed(1)
+        +
+        " °C"
+        :
+        "--";
+
+
+    document
+    .getElementById(
+        "humAmbProm"
+    )
+    .innerText =
+        resumen.humedad_ambiente_promedio
+        !== null
+        &&
+        resumen.humedad_ambiente_promedio
+        !== undefined
+        ?
+        Number(
+            resumen.humedad_ambiente_promedio
+        )
+        .toFixed(1)
+        +
+        " %"
+        :
+        "--";
+
+
+    const alarmas =
+        Number(
+            resumen.alarmas_activas
+            ||
+            0
+        );
+
+
+    const elementoAlarmas =
+        document.getElementById(
+            "alarmasActivas"
+        );
+
+
+    elementoAlarmas.innerText =
+        alarmas;
+
+
+    elementoAlarmas.classList.toggle(
+        "alarma",
+        alarmas > 0
+    );
 }
 
 
+function procesarHydronix(
+    texto
+) {
 
-/* =========================================================
-   GRAFICA
-   ========================================================= */
+    try {
+
+        const datos =
+            JSON.parse(
+                texto
+            );
+
+
+        const torres =
+            datos.torres
+            ||
+            datos;
+
+
+        TORRES.forEach(
+            function(torre) {
+
+                if (
+                    torres[
+                        torre.id
+                    ]
+                ) {
+
+                    estadoHydronix[
+                        torre.id
+                    ] =
+                        torres[
+                            torre.id
+                        ];
+
+                    actualizarHydronixVisual(
+                        torre.id
+                    );
+                }
+            }
+        );
+    }
+
+    catch(error) {
+        console.error(
+            "Error JSON Hydronix:",
+            error
+        );
+    }
+}
+
+
+function actualizarHydronixVisual(
+    id
+) {
+
+    const datos =
+        estadoHydronix[
+            id
+        ];
+
+
+    const badge =
+        document.getElementById(
+            "badge-hydronix-" + id
+        );
+
+
+    const valor =
+        document.getElementById(
+            "hydronix-" + id
+        );
+
+
+    if (
+        datos
+        &&
+        datos.estado
+        ===
+        "online"
+        &&
+        datos.humedad_arroz
+        !== null
+        &&
+        datos.humedad_arroz
+        !== undefined
+    ) {
+
+        badge.innerText =
+            "HYDRONIX ONLINE";
+
+        badge.className =
+            "badge badge-online";
+
+        valor.innerText =
+            Number(
+                datos.humedad_arroz
+            )
+            .toFixed(2)
+            +
+            " %";
+    }
+
+    else if (datos) {
+
+        badge.innerText =
+            "HYDRONIX OFFLINE";
+
+        badge.className =
+            "badge badge-offline";
+
+        valor.innerText =
+            "-- %";
+    }
+
+    else {
+
+        badge.innerText =
+            "PENDIENTE";
+
+        badge.className =
+            "badge badge-espera";
+
+        valor.innerText =
+            "-- %";
+    }
+}
+
+
+function procesarAlarmasState(
+    texto
+) {
+
+    try {
+
+        const datos =
+            JSON.parse(
+                texto
+            );
+
+
+        if (
+            datos.alarmas
+        ) {
+
+            configAlarmas =
+                datos.alarmas;
+
+            cargarInputsAlarmas();
+
+            const estado =
+                document
+                .getElementById(
+                    "configStatus"
+                );
+
+            estado.innerText =
+                "Configuración confirmada por la Pico.";
+
+            estado.className =
+                "config-status ok";
+        }
+    }
+
+    catch(error) {
+        console.error(
+            "Error JSON alarmas:",
+            error
+        );
+    }
+}
+
+
+function abrirConfiguracion() {
+
+    cargarInputsAlarmas();
+
+    document
+    .getElementById(
+        "configStatus"
+    )
+    .innerText =
+        "";
+
+    document
+    .getElementById(
+        "configOverlay"
+    )
+    .classList.remove(
+        "oculto"
+    );
+}
+
+
+function cerrarConfiguracion() {
+
+    document
+    .getElementById(
+        "configOverlay"
+    )
+    .classList.add(
+        "oculto"
+    );
+}
+
+
+function cargarInputsAlarmas() {
+
+    TORRES.forEach(
+        function(torre) {
+
+            const cfg =
+                configAlarmas[
+                    torre.id
+                ]
+                ||
+                {};
+
+            setInput(
+                `cfg-${torre.id}-arroz-min`,
+                cfg.arroz_min
+            );
+
+            setInput(
+                `cfg-${torre.id}-arroz-max`,
+                cfg.arroz_max
+            );
+
+            setInput(
+                `cfg-${torre.id}-amb-min`,
+                cfg.ambiente_min
+            );
+
+            setInput(
+                `cfg-${torre.id}-amb-max`,
+                cfg.ambiente_max
+            );
+        }
+    );
+}
+
+
+function setInput(
+    id,
+    valor
+) {
+
+    document
+    .getElementById(
+        id
+    )
+    .value =
+        valor === null
+        ||
+        valor === undefined
+        ?
+        ""
+        :
+        valor;
+}
+
+
+function leerNumeroInput(
+    id
+) {
+
+    const valor =
+        document
+        .getElementById(
+            id
+        )
+        .value
+        .trim();
+
+
+    if (valor === "") {
+        return null;
+    }
+
+
+    return Number(valor);
+}
+
+
+function guardarAlarmas() {
+
+    if (
+        !client
+        ||
+        !client.connected
+    ) {
+
+        mostrarEstadoConfig(
+            "No hay conexión MQTT.",
+            false
+        );
+
+        return;
+    }
+
+
+    const nuevas = {};
+
+
+    for (
+        const torre
+        of
+        TORRES
+    ) {
+
+        const arrozMin =
+            leerNumeroInput(
+                `cfg-${torre.id}-arroz-min`
+            );
+
+        const arrozMax =
+            leerNumeroInput(
+                `cfg-${torre.id}-arroz-max`
+            );
+
+        const ambMin =
+            leerNumeroInput(
+                `cfg-${torre.id}-amb-min`
+            );
+
+        const ambMax =
+            leerNumeroInput(
+                `cfg-${torre.id}-amb-max`
+            );
+
+
+        if (
+            arrozMin !== null
+            &&
+            arrozMax !== null
+            &&
+            arrozMin >= arrozMax
+        ) {
+
+            mostrarEstadoConfig(
+                `${torre.nombre}: el límite bajo del arroz debe ser menor al alto.`,
+                false
+            );
+
+            return;
+        }
+
+
+        if (
+            ambMin !== null
+            &&
+            ambMax !== null
+            &&
+            ambMin >= ambMax
+        ) {
+
+            mostrarEstadoConfig(
+                `${torre.nombre}: el límite bajo ambiente debe ser menor al alto.`,
+                false
+            );
+
+            return;
+        }
+
+
+        nuevas[
+            torre.id
+        ] = {
+            arroz_min: arrozMin,
+            arroz_max: arrozMax,
+            ambiente_min: ambMin,
+            ambiente_max: ambMax
+        };
+    }
+
+
+    mostrarEstadoConfig(
+        "Enviando configuración...",
+        true
+    );
+
+
+    client.publish(
+        TOPIC_ALARMAS_SET,
+        JSON.stringify(
+            {
+                alarmas:
+                    nuevas
+            }
+        ),
+        {
+            qos: 0,
+            retain: false
+        },
+        function(error) {
+
+            if (error) {
+
+                mostrarEstadoConfig(
+                    "No fue posible publicar. Revisa permisos MQTT.",
+                    false
+                );
+
+                return;
+            }
+
+
+            configAlarmas =
+                nuevas;
+
+
+            mostrarEstadoConfig(
+                "Enviada. Esperando confirmación de la Pico...",
+                true
+            );
+        }
+    );
+}
+
+
+function mostrarEstadoConfig(
+    texto,
+    ok
+) {
+
+    const estado =
+        document
+        .getElementById(
+            "configStatus"
+        );
+
+    estado.innerText =
+        texto;
+
+    estado.className =
+        ok
+        ?
+        "config-status ok"
+        :
+        "config-status";
+}
+
 
 function dibujarGrafica() {
 
@@ -2500,9 +2619,7 @@ function dibujarGrafica() {
         <
         2
     ) {
-
         return;
-
     }
 
 
@@ -2525,11 +2642,8 @@ function dibujarGrafica() {
         <
         2
     ) {
-
         minimo -= 1;
-
         maximo += 1;
-
     }
 
 
@@ -2539,22 +2653,18 @@ function dibujarGrafica() {
         maximo
     );
 
-
     dibujarLinea(
         "torre02",
         minimo,
         maximo
     );
 
-
     dibujarLinea(
         "torre03",
         minimo,
         maximo
     );
-
 }
-
 
 
 function dibujarLinea(
@@ -2572,9 +2682,7 @@ function dibujarLinea(
         <
         2
     ) {
-
         return;
-
     }
 
 
@@ -2601,7 +2709,7 @@ function dibujarLinea(
 
 
                 const y =
-                    270
+                    250
                     -
                     (
                         (
@@ -2617,7 +2725,7 @@ function dibujarLinea(
                         )
                     )
                     *
-                    245;
+                    225;
 
 
                 return (
@@ -2627,12 +2735,9 @@ function dibujarLinea(
                     +
                     y.toFixed(1)
                 );
-
             }
         )
-        .join(
-            " "
-        );
+        .join(" ");
 
 
     document
@@ -2643,32 +2748,23 @@ function dibujarLinea(
         "points",
         puntos
     );
-
 }
 
-
-
-/* =========================================================
-   TIEMPO ULTIMA LECTURA
-   ========================================================= */
 
 setInterval(
     function() {
 
-        [
-            "torre01",
-            "torre02",
-            "torre03"
-        ]
-        .forEach(
-            function(id) {
+        TORRES.forEach(
+            function(torre) {
+
+                const id =
+                    torre.id;
+
 
                 if (
                     !ultimaLectura[id]
                 ) {
-
                     return;
-
                 }
 
 
@@ -2691,27 +2787,16 @@ setInterval(
                     );
 
 
-                if (
+                elemento.innerText =
+                    segundos <= 2
+                    ?
+                    "Ahora"
+                    :
+                    "Hace "
+                    +
                     segundos
-                    <=
-                    2
-                ) {
-
-                    elemento.innerText =
-                        "Ahora";
-
-                }
-
-                else {
-
-                    elemento.innerText =
-                        "Hace "
-                        +
-                        segundos
-                        +
-                        " s";
-
-                }
+                    +
+                    " s";
 
 
                 if (
@@ -2723,66 +2808,63 @@ setInterval(
                     const badge =
                         document
                         .getElementById(
-                            "badge-" + id
+                            "badge-pt100-" + id
                         );
 
 
                     badge.innerText =
-                        "OFFLINE";
+                        "PT100 OFFLINE";
 
 
                     badge.className =
                         "badge badge-offline";
-
                 }
-
             }
         );
-
     },
     1000
 );
 
 
-
-/* =========================================================
-   OFFLINE GENERAL
-   ========================================================= */
-
 function marcarTodoOffline() {
 
-    [
-        "torre01",
-        "torre02",
-        "torre03"
-    ]
-    .forEach(
-        function(id) {
+    TORRES.forEach(
+        function(torre) {
 
-            const badge =
+            const id =
+                torre.id;
+
+
+            const badgePt =
                 document
                 .getElementById(
-                    "badge-" + id
+                    "badge-pt100-" + id
                 );
 
 
-            badge.innerText =
-                "OFFLINE";
+            const badgeDht =
+                document
+                .getElementById(
+                    "badge-dht-" + id
+                );
 
 
-            badge.className =
+            badgePt.innerText =
+                "PT100 OFFLINE";
+
+            badgePt.className =
                 "badge badge-offline";
 
+
+            badgeDht.innerText =
+                "DHT22 OFFLINE";
+
+            badgeDht.className =
+                "badge badge-offline";
         }
     );
-
 }
 
-
-
-/* =========================================================
-   ENTER
-   ========================================================= */
 
 document
 .getElementById(
@@ -2797,17 +2879,34 @@ document
             ===
             "Enter"
         ) {
-
             conectar();
-
         }
-
     }
 );
 
+
+document
+.getElementById(
+    "configOverlay"
+)
+.addEventListener(
+    "click",
+    function(event) {
+
+        if (
+            event.target
+            ===
+            this
+        ) {
+            cerrarConfiguracion();
+        }
+    }
+);
+
+
+crearTorres();
+crearFormularioAlarmas();
 </script>
 
-
 </body>
-
 </html>
