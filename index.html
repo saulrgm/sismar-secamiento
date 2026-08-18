@@ -167,7 +167,7 @@ header {
 
 .resumen {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 14px;
     margin-bottom: 20px;
 }
@@ -842,6 +842,15 @@ footer {
             </div>
         </div>
 
+        <div class="resumen-card">
+            <div class="resumen-label">
+                Hydronix Online
+            </div>
+            <div class="resumen-valor" id="hydronixOnline">
+                0 / 3
+            </div>
+        </div>
+
     </section>
 
 
@@ -850,11 +859,10 @@ footer {
 
     <div class="aviso-hydronix">
         <strong>Hydronix Hydro-Mix XT:</strong>
-        el dashboard ya está preparado para recibir la humedad del arroz
-        mediante el topic MQTT
-        <code>sismar/secador01/hydronix/telemetria</code>.
-        Hasta que el puente Hydro-Com/RS485 → MQTT esté terminado,
-        aparecerá como “PENDIENTE INTEGRACIÓN”.
+        los tres sensores se reciben por RS485/Modbus desde el PC.
+        Cuando la lectura calibrada es negativa, SISMAR la interpreta como
+        <strong>SIN MATERIAL</strong> y mantiene el sensor como ONLINE.
+        Cuando existe una lectura válida, muestra el porcentaje de humedad del arroz.
     </div>
 
 
@@ -1143,7 +1151,7 @@ function crearTorres() {
                                 class="badge badge-espera"
                                 id="badge-hydronix-${torre.id}"
                             >
-                                PENDIENTE
+                                ESPERANDO
                             </div>
                         </div>
 
@@ -1154,8 +1162,18 @@ function crearTorres() {
                             -- %
                         </div>
 
+                        <div class="fila" style="margin-top:12px">
+                            <span>Modo E</span>
+                            <strong id="hydronix-modo-e-${torre.id}">--</strong>
+                        </div>
+
+                        <div class="fila">
+                            <span>Temp. material</span>
+                            <strong id="hydronix-temp-${torre.id}">--</strong>
+                        </div>
+
                         <div class="mini-source">
-                            Hydronix Hydro-Mix XT · RS485
+                            Hydronix Hydro-Mix XT · RS485 / Modbus
                         </div>
 
                     </div>
@@ -2202,6 +2220,42 @@ function procesarHydronix(
                 }
             }
         );
+
+
+        let online = 0;
+
+        TORRES.forEach(
+            function(torre) {
+
+                const sensor =
+                    estadoHydronix[
+                        torre.id
+                    ];
+
+                if (
+                    sensor
+                    &&
+                    (
+                        sensor.estado === "online"
+                        ||
+                        sensor.estado === "sin_material"
+                    )
+                ) {
+                    online++;
+                }
+            }
+        );
+
+
+        document
+        .getElementById(
+            "hydronixOnline"
+        )
+        .innerText =
+            online
+            +
+            " / 3";
+
     }
 
     catch(error) {
@@ -2235,18 +2289,89 @@ function actualizarHydronixVisual(
         );
 
 
+    const modoE =
+        document.getElementById(
+            "hydronix-modo-e-" + id
+        );
+
+
+    const tempMaterial =
+        document.getElementById(
+            "hydronix-temp-" + id
+        );
+
+
+    if (!datos) {
+
+        badge.innerText =
+            "ESPERANDO";
+
+        badge.className =
+            "badge badge-espera";
+
+        valor.innerText =
+            "-- %";
+
+        modoE.innerText =
+            "--";
+
+        tempMaterial.innerText =
+            "--";
+
+        return;
+    }
+
+
     if (
-        datos
+        datos.modo_e !== null
         &&
-        datos.estado
-        ===
-        "online"
+        datos.modo_e !== undefined
+    ) {
+
+        modoE.innerText =
+            Number(
+                datos.modo_e
+            )
+            .toFixed(2);
+    }
+
+    else {
+
+        modoE.innerText =
+            "--";
+    }
+
+
+    if (
+        datos.temperatura_material !== null
         &&
-        datos.humedad_arroz
-        !== null
+        datos.temperatura_material !== undefined
+    ) {
+
+        tempMaterial.innerText =
+            Number(
+                datos.temperatura_material
+            )
+            .toFixed(2)
+            +
+            " °C";
+    }
+
+    else {
+
+        tempMaterial.innerText =
+            "--";
+    }
+
+
+    if (
+        datos.estado === "online"
         &&
-        datos.humedad_arroz
-        !== undefined
+        datos.hay_material === true
+        &&
+        datos.humedad_arroz !== null
+        &&
+        datos.humedad_arroz !== undefined
     ) {
 
         badge.innerText =
@@ -2262,33 +2387,52 @@ function actualizarHydronixVisual(
             .toFixed(2)
             +
             " %";
+
+        valor.style.color =
+            "var(--azul)";
+
+        return;
     }
 
-    else if (datos) {
+
+    if (
+        datos.estado === "sin_material"
+        ||
+        (
+            datos.estado === "online"
+            &&
+            datos.hay_material === false
+        )
+    ) {
 
         badge.innerText =
-            "HYDRONIX OFFLINE";
+            "HYDRONIX ONLINE";
 
         badge.className =
-            "badge badge-offline";
+            "badge badge-online";
 
         valor.innerText =
-            "-- %";
+            "SIN MATERIAL";
+
+        valor.style.color =
+            "var(--amarillo)";
+
+        return;
     }
 
-    else {
 
-        badge.innerText =
-            "PENDIENTE";
+    badge.innerText =
+        "HYDRONIX OFFLINE";
 
-        badge.className =
-            "badge badge-espera";
+    badge.className =
+        "badge badge-offline";
 
-        valor.innerText =
-            "-- %";
-    }
+    valor.innerText =
+        "-- %";
+
+    valor.style.color =
+        "var(--azul)";
 }
-
 
 function procesarAlarmasState(
     texto
