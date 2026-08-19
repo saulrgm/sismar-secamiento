@@ -860,9 +860,8 @@ footer {
     <div class="aviso-hydronix">
         <strong>Hydronix Hydro-Mix XT:</strong>
         los tres sensores se reciben por RS485/Modbus desde el PC.
-        Cuando la lectura calibrada es negativa, SISMAR la interpreta como
-        <strong>SIN MATERIAL</strong> y mantiene el sensor como ONLINE.
-        Cuando existe una lectura válida, muestra el porcentaje de humedad del arroz.
+        SISMAR utiliza <strong>Modo E</strong> como valor principal de humedad del arroz.
+        La humedad filtrada Modo E se conserva como dato diagnóstico.
     </div>
 
 
@@ -938,7 +937,7 @@ footer {
 
 
 <footer>
-    SISMAR · PT100/MAX31865 · DHT22 · Hydronix Hydro-Mix XT · Raspberry Pi Pico W · MQTT
+    SISMAR · 3 Nodos Pico W · PT100/MAX31865 · DHT22 · Hydronix Hydro-Mix XT · MQTT
 </footer>
 
 
@@ -949,20 +948,36 @@ const BROKER =
 const MQTT_USER =
     "dashboard_sismar";
 
-const TOPIC_TELEMETRIA =
+const TOPIC_TELEMETRIA_NODOS =
+    "sismar/secador01/+/telemetria";
+
+const TOPIC_ESTADO_NODOS =
+    "sismar/secador01/+/estado";
+
+const TOPIC_ALARMAS_STATE_NODOS =
+    "sismar/secador01/+/config/alarmas/state";
+
+// Compatibilidad temporal mientras se migra desde la Pico central.
+const TOPIC_TELEMETRIA_LEGACY =
     "sismar/secador01/telemetria";
 
-const TOPIC_ESTADO =
+const TOPIC_ESTADO_LEGACY =
     "sismar/secador01/estado";
 
 const TOPIC_HYDRONIX =
     "sismar/secador01/hydronix/telemetria";
 
-const TOPIC_ALARMAS_SET =
-    "sismar/secador01/config/alarmas/set";
-
-const TOPIC_ALARMAS_STATE =
-    "sismar/secador01/config/alarmas/state";
+function topicAlarmasSet(
+    torreId
+) {
+    return (
+        "sismar/secador01/"
+        +
+        torreId
+        +
+        "/config/alarmas/set"
+    );
+}
 
 
 const TORRES = [
@@ -979,16 +994,16 @@ const TORRES = [
         nombre: "TORRE 2",
         pt100: "PT100-02",
         dht: "DHT22-02",
-        maxCs: "GP20",
-        dhtPin: "GP26"
+        maxCs: "GP17",
+        dhtPin: "GP22"
     },
     {
         id: "torre03",
         nombre: "TORRE 3",
         pt100: "PT100-03",
         dht: "DHT22-03",
-        maxCs: "GP21",
-        dhtPin: "GP27"
+        maxCs: "GP17",
+        dhtPin: "GP22"
     }
 ];
 
@@ -1007,6 +1022,20 @@ const ultimaLectura = {
     torre01: null,
     torre02: null,
     torre03: null
+};
+
+
+const datosTorresCache = {
+    torre01: null,
+    torre02: null,
+    torre03: null
+};
+
+
+const ultimaRecepcionNodo = {
+    torre01: 0,
+    torre02: 0,
+    torre03: 0
 };
 
 
@@ -1144,7 +1173,7 @@ function crearTorres() {
 
                         <div class="hydronix-head">
                             <div class="hydronix-title">
-                                Humedad del arroz
+                                Humedad del arroz · Modo E
                             </div>
 
                             <div
@@ -1163,8 +1192,8 @@ function crearTorres() {
                         </div>
 
                         <div class="fila" style="margin-top:12px">
-                            <span>Modo E</span>
-                            <strong id="hydronix-modo-e-${torre.id}">--</strong>
+                            <span>Humedad filtrada E</span>
+                            <strong id="hydronix-filtrada-e-${torre.id}">--</strong>
                         </div>
 
                         <div class="fila">
@@ -1421,19 +1450,28 @@ function conectar() {
             cambiarConexion(true);
 
             client.subscribe(
-                TOPIC_TELEMETRIA
+                TOPIC_TELEMETRIA_NODOS
             );
 
             client.subscribe(
-                TOPIC_ESTADO
+                TOPIC_ESTADO_NODOS
+            );
+
+            client.subscribe(
+                TOPIC_ALARMAS_STATE_NODOS
             );
 
             client.subscribe(
                 TOPIC_HYDRONIX
             );
 
+            // Durante la migracion acepta tambien la Pico central anterior.
             client.subscribe(
-                TOPIC_ALARMAS_STATE
+                TOPIC_TELEMETRIA_LEGACY
+            );
+
+            client.subscribe(
+                TOPIC_ESTADO_LEGACY
             );
         }
     );
@@ -1483,35 +1521,6 @@ function conectar() {
 
             if (
                 topic ===
-                TOPIC_ESTADO
-            ) {
-
-                if (
-                    texto.trim()
-                    ===
-                    "offline"
-                ) {
-                    marcarTodoOffline();
-                }
-
-                return;
-            }
-
-
-            if (
-                topic ===
-                TOPIC_TELEMETRIA
-            ) {
-                procesarTelemetria(
-                    texto
-                );
-
-                return;
-            }
-
-
-            if (
-                topic ===
                 TOPIC_HYDRONIX
             ) {
                 procesarHydronix(
@@ -1524,9 +1533,94 @@ function conectar() {
 
             if (
                 topic ===
-                TOPIC_ALARMAS_STATE
+                TOPIC_TELEMETRIA_LEGACY
             ) {
-                procesarAlarmasState(
+                procesarTelemetriaLegacy(
+                    texto
+                );
+
+                return;
+            }
+
+
+            if (
+                topic ===
+                TOPIC_ESTADO_LEGACY
+            ) {
+                // No se marca todo offline si ya existen nodos distribuidos.
+                return;
+            }
+
+
+            const partes =
+                topic.split("/");
+
+
+            if (
+                partes.length < 4
+                ||
+                partes[0] !== "sismar"
+                ||
+                partes[1] !== "secador01"
+            ) {
+                return;
+            }
+
+
+            const torreId =
+                partes[2];
+
+
+            if (
+                !TORRES.some(
+                    function(torre) {
+                        return torre.id === torreId;
+                    }
+                )
+            ) {
+                return;
+            }
+
+
+            if (
+                partes.length === 4
+                &&
+                partes[3] === "telemetria"
+            ) {
+                procesarTelemetriaNodo(
+                    torreId,
+                    texto
+                );
+
+                return;
+            }
+
+
+            if (
+                partes.length === 4
+                &&
+                partes[3] === "estado"
+            ) {
+                procesarEstadoNodo(
+                    torreId,
+                    texto
+                );
+
+                return;
+            }
+
+
+            if (
+                partes.length === 6
+                &&
+                partes[3] === "config"
+                &&
+                partes[4] === "alarmas"
+                &&
+                partes[5] === "state"
+            ) {
+                procesarAlarmasStateNodo(
+                    torreId,
                     texto
                 );
             }
@@ -1571,7 +1665,8 @@ function cambiarConexion(
 }
 
 
-function procesarTelemetria(
+function procesarTelemetriaNodo(
+    torreId,
     texto
 ) {
 
@@ -1582,41 +1677,118 @@ function procesarTelemetria(
                 texto
             );
 
-        if (
-            datos.torres
-        ) {
-
-            TORRES.forEach(
-                function(torre) {
-                    actualizarTorre(
-                        torre.id,
-                        datos.torres[
-                            torre.id
-                        ]
-                    );
-                }
+        const lectura =
+            datos.torre
+            ||
+            (
+                datos.torres
+                &&
+                datos.torres[torreId]
             );
+
+        if (!lectura) {
+            return;
         }
 
-        if (
-            datos.resumen
-        ) {
-            actualizarResumen(
-                datos.resumen
-            );
-        }
+        datosTorresCache[torreId] =
+            lectura;
 
+        ultimaRecepcionNodo[torreId] =
+            Date.now();
+
+        actualizarTorre(
+            torreId,
+            lectura
+        );
+
+        actualizarResumenDistribuido();
         dibujarGrafica();
     }
 
     catch(error) {
         console.error(
-            "Error JSON telemetría:",
+            "Error JSON nodo " + torreId + ":",
             error
         );
     }
 }
 
+
+function procesarTelemetriaLegacy(
+    texto
+) {
+
+    try {
+
+        const datos =
+            JSON.parse(
+                texto
+            );
+
+        if (!datos.torres) {
+            return;
+        }
+
+        TORRES.forEach(
+            function(torre) {
+
+                // Si este nodo distribuido reporto en los ultimos
+                // 10 segundos, tiene prioridad sobre la Pico central.
+                const nodoReciente =
+                    (
+                        Date.now()
+                        -
+                        ultimaRecepcionNodo[torre.id]
+                    )
+                    <
+                    10000;
+
+                if (
+                    nodoReciente
+                    ||
+                    !datos.torres[torre.id]
+                ) {
+                    return;
+                }
+
+                datosTorresCache[torre.id] =
+                    datos.torres[torre.id];
+
+                actualizarTorre(
+                    torre.id,
+                    datos.torres[torre.id]
+                );
+            }
+        );
+
+        actualizarResumenDistribuido();
+        dibujarGrafica();
+    }
+
+    catch(error) {
+        console.error(
+            "Error JSON telemetria legacy:",
+            error
+        );
+    }
+}
+
+
+function procesarEstadoNodo(
+    torreId,
+    texto
+) {
+
+    if (
+        texto.trim()
+        ===
+        "offline"
+    ) {
+        datosTorresCache[torreId] = null;
+        marcarTorreOffline(torreId);
+        actualizarResumenDistribuido();
+    }
+}
 
 function actualizarTorre(
     id,
@@ -2059,6 +2231,132 @@ function esAlarmaActiva(
 }
 
 
+function actualizarResumenDistribuido() {
+
+    let pt100Online = 0;
+    let dhtOnline = 0;
+    let alarmasActivas = 0;
+
+    const temperaturasArroz = [];
+    const temperaturasAmbiente = [];
+    const humedadesAmbiente = [];
+
+    TORRES.forEach(
+        function(torre) {
+
+            const datos =
+                datosTorresCache[torre.id];
+
+            if (!datos) {
+                return;
+            }
+
+            if (
+                datos.estado === "online"
+                &&
+                datos.temperatura !== null
+                &&
+                datos.temperatura !== undefined
+            ) {
+                pt100Online++;
+                temperaturasArroz.push(
+                    Number(datos.temperatura)
+                );
+            }
+
+            const ambiente =
+                datos.ambiente
+                ||
+                {};
+
+            if (
+                ambiente.estado === "online"
+                &&
+                ambiente.temperatura !== null
+                &&
+                ambiente.temperatura !== undefined
+            ) {
+                dhtOnline++;
+                temperaturasAmbiente.push(
+                    Number(ambiente.temperatura)
+                );
+
+                if (
+                    ambiente.humedad !== null
+                    &&
+                    ambiente.humedad !== undefined
+                ) {
+                    humedadesAmbiente.push(
+                        Number(ambiente.humedad)
+                    );
+                }
+            }
+
+            const alarmas =
+                datos.alarmas
+                ||
+                {};
+
+            ["arroz", "ambiente"].forEach(
+                function(tipo) {
+                    const estado =
+                        alarmas[tipo]
+                        &&
+                        alarmas[tipo].estado;
+
+                    if (
+                        estado === "baja"
+                        ||
+                        estado === "alta"
+                    ) {
+                        alarmasActivas++;
+                    }
+                }
+            );
+        }
+    );
+
+    const promedio =
+        function(valores) {
+            if (!valores.length) {
+                return null;
+            }
+
+            return (
+                valores.reduce(
+                    function(total, valor) {
+                        return total + valor;
+                    },
+                    0
+                )
+                /
+                valores.length
+            );
+        };
+
+    actualizarResumen(
+        {
+            sensores_online_total:
+                pt100Online + dhtOnline,
+
+            sensores_total:
+                6,
+
+            temperatura_promedio:
+                promedio(temperaturasArroz),
+
+            temperatura_ambiente_promedio:
+                promedio(temperaturasAmbiente),
+
+            humedad_ambiente_promedio:
+                promedio(humedadesAmbiente),
+
+            alarmas_activas:
+                alarmasActivas
+        }
+    );
+}
+
 function actualizarResumen(
     resumen
 ) {
@@ -2235,11 +2533,7 @@ function procesarHydronix(
                 if (
                     sensor
                     &&
-                    (
-                        sensor.estado === "online"
-                        ||
-                        sensor.estado === "sin_material"
-                    )
+                    sensor.estado === "online"
                 ) {
                     online++;
                 }
@@ -2272,169 +2566,87 @@ function actualizarHydronixVisual(
 ) {
 
     const datos =
-        estadoHydronix[
-            id
-        ];
-
+        estadoHydronix[id];
 
     const badge =
         document.getElementById(
             "badge-hydronix-" + id
         );
 
-
     const valor =
         document.getElementById(
             "hydronix-" + id
         );
 
-
-    const modoE =
+    const filtradaE =
         document.getElementById(
-            "hydronix-modo-e-" + id
+            "hydronix-filtrada-e-" + id
         );
-
 
     const tempMaterial =
         document.getElementById(
             "hydronix-temp-" + id
         );
 
-
     if (!datos) {
-
-        badge.innerText =
-            "ESPERANDO";
-
-        badge.className =
-            "badge badge-espera";
-
-        valor.innerText =
-            "-- %";
-
-        modoE.innerText =
-            "--";
-
-        tempMaterial.innerText =
-            "--";
-
+        badge.innerText = "ESPERANDO";
+        badge.className = "badge badge-espera";
+        valor.innerText = "--";
+        filtradaE.innerText = "--";
+        tempMaterial.innerText = "--";
         return;
     }
 
+    const humedadFiltrada =
+        datos.humedad_filtrada_e
+        ??
+        datos.humedad_sensor;
 
-    if (
-        datos.modo_e !== null
+    filtradaE.innerText =
+        humedadFiltrada !== null
         &&
-        datos.modo_e !== undefined
-    ) {
+        humedadFiltrada !== undefined
+        ?
+        Number(humedadFiltrada).toFixed(2) + " %"
+        :
+        "--";
 
-        modoE.innerText =
-            Number(
-                datos.modo_e
-            )
-            .toFixed(2);
-    }
-
-    else {
-
-        modoE.innerText =
-            "--";
-    }
-
-
-    if (
+    tempMaterial.innerText =
         datos.temperatura_material !== null
         &&
         datos.temperatura_material !== undefined
-    ) {
+        ?
+        Number(datos.temperatura_material).toFixed(2) + " °C"
+        :
+        "--";
 
-        tempMaterial.innerText =
-            Number(
-                datos.temperatura_material
-            )
-            .toFixed(2)
-            +
-            " °C";
-    }
-
-    else {
-
-        tempMaterial.innerText =
-            "--";
-    }
-
+    const modoE =
+        datos.modo_e
+        ??
+        datos.humedad_arroz;
 
     if (
         datos.estado === "online"
         &&
-        datos.hay_material === true
+        modoE !== null
         &&
-        datos.humedad_arroz !== null
-        &&
-        datos.humedad_arroz !== undefined
+        modoE !== undefined
     ) {
-
-        badge.innerText =
-            "HYDRONIX ONLINE";
-
-        badge.className =
-            "badge badge-online";
-
-        valor.innerText =
-            Number(
-                datos.humedad_arroz
-            )
-            .toFixed(2)
-            +
-            " %";
-
-        valor.style.color =
-            "var(--azul)";
-
+        badge.innerText = "HYDRONIX ONLINE";
+        badge.className = "badge badge-online";
+        valor.innerText = Number(modoE).toFixed(2);
+        valor.style.color = "var(--azul)";
         return;
     }
 
-
-    if (
-        datos.estado === "sin_material"
-        ||
-        (
-            datos.estado === "online"
-            &&
-            datos.hay_material === false
-        )
-    ) {
-
-        badge.innerText =
-            "HYDRONIX ONLINE";
-
-        badge.className =
-            "badge badge-online";
-
-        valor.innerText =
-            "SIN MATERIAL";
-
-        valor.style.color =
-            "var(--amarillo)";
-
-        return;
-    }
-
-
-    badge.innerText =
-        "HYDRONIX OFFLINE";
-
-    badge.className =
-        "badge badge-offline";
-
-    valor.innerText =
-        "-- %";
-
-    valor.style.color =
-        "var(--azul)";
+    badge.innerText = "HYDRONIX OFFLINE";
+    badge.className = "badge badge-offline";
+    valor.innerText = "--";
+    valor.style.color = "var(--azul)";
 }
 
-function procesarAlarmasState(
+function procesarAlarmasStateNodo(
+    torreId,
     texto
 ) {
 
@@ -2445,15 +2657,21 @@ function procesarAlarmasState(
                 texto
             );
 
-
         if (
             datos.alarmas
         ) {
 
-            configAlarmas =
+            configAlarmas[torreId] =
                 datos.alarmas;
 
             cargarInputsAlarmas();
+
+            const torre =
+                TORRES.find(
+                    function(item) {
+                        return item.id === torreId;
+                    }
+                );
 
             const estado =
                 document
@@ -2462,7 +2680,17 @@ function procesarAlarmasState(
                 );
 
             estado.innerText =
-                "Configuración confirmada por la Pico.";
+                "Configuracion confirmada por "
+                +
+                (
+                    torre
+                    ?
+                    torre.nombre
+                    :
+                    torreId
+                )
+                +
+                ".";
 
             estado.className =
                 "config-status ok";
@@ -2471,12 +2699,11 @@ function procesarAlarmasState(
 
     catch(error) {
         console.error(
-            "Error JSON alarmas:",
+            "Error JSON alarmas " + torreId + ":",
             error
         );
     }
 }
-
 
 function abrirConfiguracion() {
 
@@ -2687,38 +2914,62 @@ function guardarAlarmas() {
     );
 
 
-    client.publish(
-        TOPIC_ALARMAS_SET,
-        JSON.stringify(
-            {
-                alarmas:
-                    nuevas
-            }
-        ),
-        {
-            qos: 0,
-            retain: false
-        },
-        function(error) {
+    let publicacionesPendientes =
+        TORRES.length;
 
-            if (error) {
-
-                mostrarEstadoConfig(
-                    "No fue posible publicar. Revisa permisos MQTT.",
-                    false
-                );
-
-                return;
-            }
+    let huboError =
+        false;
 
 
-            configAlarmas =
-                nuevas;
+    TORRES.forEach(
+        function(torre) {
 
+            client.publish(
+                topicAlarmasSet(
+                    torre.id
+                ),
+                JSON.stringify(
+                    {
+                        alarmas:
+                            nuevas[torre.id]
+                    }
+                ),
+                {
+                    qos: 0,
+                    retain: false
+                },
+                function(error) {
 
-            mostrarEstadoConfig(
-                "Enviada. Esperando confirmación de la Pico...",
-                true
+                    publicacionesPendientes--;
+
+                    if (error) {
+                        huboError = true;
+                    }
+
+                    if (
+                        publicacionesPendientes
+                        ===
+                        0
+                    ) {
+
+                        if (huboError) {
+                            mostrarEstadoConfig(
+                                "Una o mas torres no recibieron la configuracion. Revisa permisos MQTT.",
+                                false
+                            );
+
+                            return;
+                        }
+
+                        configAlarmas =
+                            nuevas;
+
+                        mostrarEstadoConfig(
+                            "Enviada a las 3 torres. Esperando confirmacion...",
+                            true
+                        );
+                    }
+                }
             );
         }
     );
@@ -2969,6 +3220,35 @@ setInterval(
     1000
 );
 
+
+function marcarTorreOffline(
+    id
+) {
+
+    ultimaLectura[id] = null;
+
+    const badgePt =
+        document.getElementById(
+            "badge-pt100-" + id
+        );
+
+    const badgeDht =
+        document.getElementById(
+            "badge-dht-" + id
+        );
+
+    badgePt.innerText =
+        "PT100 OFFLINE";
+
+    badgePt.className =
+        "badge badge-offline";
+
+    badgeDht.innerText =
+        "DHT22 OFFLINE";
+
+    badgeDht.className =
+        "badge badge-offline";
+}
 
 function marcarTodoOffline() {
 
