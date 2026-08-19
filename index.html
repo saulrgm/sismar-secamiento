@@ -937,7 +937,7 @@ footer {
 
 
 <footer>
-    SISMAR · 3 Nodos Pico W · PT100/MAX31865 · DHT22 · Hydronix Hydro-Mix XT · MQTT
+    SISMAR · 3 Nodos Pico W Independientes · PT100/MAX31865 · DHT22 · Hydronix · MQTT
 </footer>
 
 
@@ -956,13 +956,6 @@ const TOPIC_ESTADO_NODOS =
 
 const TOPIC_ALARMAS_STATE_NODOS =
     "sismar/secador01/+/config/alarmas/state";
-
-// Compatibilidad temporal mientras se migra desde la Pico central.
-const TOPIC_TELEMETRIA_LEGACY =
-    "sismar/secador01/telemetria";
-
-const TOPIC_ESTADO_LEGACY =
-    "sismar/secador01/estado";
 
 const TOPIC_HYDRONIX =
     "sismar/secador01/hydronix/telemetria";
@@ -1036,6 +1029,13 @@ const ultimaRecepcionNodo = {
     torre01: 0,
     torre02: 0,
     torre03: 0
+};
+
+
+const estadoNodoCache = {
+    torre01: null,
+    torre02: null,
+    torre03: null
 };
 
 
@@ -1449,6 +1449,19 @@ function conectar() {
 
             cambiarConexion(true);
 
+            // Inicio limpio: ninguna torre se considera online hasta
+            // recibir su estado/telemetria del nodo distribuido.
+            TORRES.forEach(
+                function(torre) {
+                    datosTorresCache[torre.id] = null;
+                    ultimaRecepcionNodo[torre.id] = 0;
+                    estadoNodoCache[torre.id] = null;
+                    marcarTorreOffline(torre.id);
+                }
+            );
+
+            actualizarResumenDistribuido();
+
             client.subscribe(
                 TOPIC_TELEMETRIA_NODOS
             );
@@ -1465,14 +1478,6 @@ function conectar() {
                 TOPIC_HYDRONIX
             );
 
-            // Durante la migracion acepta tambien la Pico central anterior.
-            client.subscribe(
-                TOPIC_TELEMETRIA_LEGACY
-            );
-
-            client.subscribe(
-                TOPIC_ESTADO_LEGACY
-            );
         }
     );
 
@@ -1481,6 +1486,8 @@ function conectar() {
         "close",
         function() {
             cambiarConexion(false);
+            marcarTodoOffline();
+            actualizarResumenDistribuido();
         }
     );
 
@@ -1489,6 +1496,8 @@ function conectar() {
         "offline",
         function() {
             cambiarConexion(false);
+            marcarTodoOffline();
+            actualizarResumenDistribuido();
         }
     );
 
@@ -1527,27 +1536,6 @@ function conectar() {
                     texto
                 );
 
-                return;
-            }
-
-
-            if (
-                topic ===
-                TOPIC_TELEMETRIA_LEGACY
-            ) {
-                procesarTelemetriaLegacy(
-                    texto
-                );
-
-                return;
-            }
-
-
-            if (
-                topic ===
-                TOPIC_ESTADO_LEGACY
-            ) {
-                // No se marca todo offline si ya existen nodos distribuidos.
                 return;
             }
 
@@ -1690,6 +1678,16 @@ function procesarTelemetriaNodo(
             return;
         }
 
+        // Si el broker ya indico que este nodo esta OFFLINE,
+        // no revivimos la torre con una telemetria retenida antigua.
+        if (
+            estadoNodoCache[torreId]
+            ===
+            "offline"
+        ) {
+            return;
+        }
+
         datosTorresCache[torreId] =
             lectura;
 
@@ -1779,17 +1777,41 @@ function procesarEstadoNodo(
     texto
 ) {
 
+    const estado =
+        String(
+            texto
+            ||
+            ""
+        )
+        .trim()
+        .toLowerCase();
+
+    estadoNodoCache[torreId] =
+        estado;
+
+
     if (
-        texto.trim()
+        estado
         ===
         "offline"
     ) {
-        datosTorresCache[torreId] = null;
-        marcarTorreOffline(torreId);
-        actualizarResumenDistribuido();
-    }
-}
 
+        datosTorresCache[torreId] = null;
+        ultimaRecepcionNodo[torreId] = 0;
+
+        marcarTorreOffline(
+            torreId
+        );
+
+        actualizarResumenDistribuido();
+
+        return;
+    }
+
+
+    // Si llega ONLINE no inventamos lecturas.
+    // Esperamos el siguiente mensaje real de telemetria.
+}
 function actualizarTorre(
     id,
     datos
@@ -1927,6 +1949,20 @@ function actualizarTorre(
 
         badgePt100.className =
             "badge badge-offline";
+
+        document
+        .getElementById(
+            "arroz-" + id
+        )
+        .innerHTML =
+            '--<span class="metric-unidad"> °C</span>';
+
+        document
+        .getElementById(
+            "res-" + id
+        )
+        .innerText =
+            "--";
 
         document
         .getElementById(
@@ -3149,38 +3185,38 @@ function dibujarLinea(
 setInterval(
     function() {
 
+        let huboCambio =
+            false;
+
         TORRES.forEach(
             function(torre) {
 
                 const id =
                     torre.id;
 
+                const ultimaRecepcion =
+                    ultimaRecepcionNodo[id];
 
-                if (
-                    !ultimaLectura[id]
-                ) {
+                if (!ultimaRecepcion) {
                     return;
                 }
-
 
                 const segundos =
                     Math.floor(
                         (
-                            new Date()
+                            Date.now()
                             -
-                            ultimaLectura[id]
+                            ultimaRecepcion
                         )
                         /
                         1000
                     );
-
 
                 const elemento =
                     document
                     .getElementById(
                         "ultima-" + id
                     );
-
 
                 elemento.innerText =
                     segundos <= 2
@@ -3194,32 +3230,38 @@ setInterval(
                     " s";
 
 
+                // Cada nodo publica aproximadamente cada 2 segundos.
+                // Si pasan mas de 10 s sin telemetria, limpiamos la torre.
                 if (
                     segundos
                     >
                     10
                 ) {
 
-                    const badge =
-                        document
-                        .getElementById(
-                            "badge-pt100-" + id
-                        );
+                    datosTorresCache[id] =
+                        null;
 
+                    ultimaRecepcionNodo[id] =
+                        0;
 
-                    badge.innerText =
-                        "PT100 OFFLINE";
+                    marcarTorreOffline(
+                        id
+                    );
 
-
-                    badge.className =
-                        "badge badge-offline";
+                    huboCambio =
+                        true;
                 }
             }
         );
+
+
+        if (huboCambio) {
+            actualizarResumenDistribuido();
+            dibujarGrafica();
+        }
     },
     1000
 );
-
 
 function marcarTorreOffline(
     id
@@ -3248,8 +3290,75 @@ function marcarTorreOffline(
 
     badgeDht.className =
         "badge badge-offline";
-}
 
+
+    document
+    .getElementById(
+        "arroz-" + id
+    )
+    .innerHTML =
+        '--<span class="metric-unidad"> °C</span>';
+
+
+    document
+    .getElementById(
+        "res-" + id
+    )
+    .innerText =
+        "--";
+
+
+    document
+    .getElementById(
+        "max-" + id
+    )
+    .innerText =
+        "--";
+
+
+    document
+    .getElementById(
+        "hilos-" + id
+    )
+    .innerText =
+        "--";
+
+
+    document
+    .getElementById(
+        "amb-temp-" + id
+    )
+    .innerText =
+        "-- °C";
+
+
+    document
+    .getElementById(
+        "amb-hum-" + id
+    )
+    .innerText =
+        "-- %";
+
+
+    document
+    .getElementById(
+        "ultima-" + id
+    )
+    .innerText =
+        "Sin datos";
+
+
+    const card =
+        document.getElementById(
+            "card-" + id
+        );
+
+    if (card) {
+        card.classList.remove(
+            "torre-alerta"
+        );
+    }
+}
 function marcarTodoOffline() {
 
     TORRES.forEach(
@@ -3258,37 +3367,18 @@ function marcarTodoOffline() {
             const id =
                 torre.id;
 
+            datosTorresCache[id] =
+                null;
 
-            const badgePt =
-                document
-                .getElementById(
-                    "badge-pt100-" + id
-                );
+            ultimaRecepcionNodo[id] =
+                0;
 
-
-            const badgeDht =
-                document
-                .getElementById(
-                    "badge-dht-" + id
-                );
-
-
-            badgePt.innerText =
-                "PT100 OFFLINE";
-
-            badgePt.className =
-                "badge badge-offline";
-
-
-            badgeDht.innerText =
-                "DHT22 OFFLINE";
-
-            badgeDht.className =
-                "badge badge-offline";
+            marcarTorreOffline(
+                id
+            );
         }
     );
 }
-
 
 document
 .getElementById(
