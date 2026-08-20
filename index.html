@@ -3,3424 +3,821 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>SISMAR | Monitoreo Integral de Secamiento</title>
-
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-
 <style>
-:root {
-    --bg: #07100c;
-    --panel: #0d1913;
-    --panel2: #112219;
-    --panel3: #152b20;
-
-    --verde: #20c77a;
-    --verde2: #15985e;
-    --verdeSoft: rgba(32,199,122,.12);
-
-    --azul: #4aa3ff;
-    --amarillo: #ffc857;
-    --rojo: #ff6470;
-    --gris: #8fa79a;
-
-    --texto: #edf8f1;
-    --muted: #8fa79a;
-    --borde: rgba(80,255,160,.11);
-
-    --sombra: 0 12px 35px rgba(0,0,0,.35);
-    --radio: 20px;
-}
-
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-    font-family: Arial, Helvetica, sans-serif;
-    color: var(--texto);
-    background:
-        radial-gradient(circle at top right, rgba(32,199,122,.11), transparent 30%),
-        linear-gradient(180deg, #07100c, #09150f);
-    min-height: 100vh;
-}
-
-button,
-input {
-    font: inherit;
-}
-
-header {
-    border-bottom: 1px solid var(--borde);
-    background: rgba(6,14,10,.90);
-    backdrop-filter: blur(12px);
-    position: sticky;
-    top: 0;
-    z-index: 20;
-}
-
-.header-inner {
-    max-width: 1500px;
-    margin: auto;
-    padding: 16px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 20px;
-}
-
-.marca {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-}
-
-.logo,
-.login-logo {
-    width: 54px;
-    height: 54px;
-    border-radius: 14px;
-    background: var(--verdeSoft);
-    border: 1px solid var(--borde);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-}
-
-.logo img,
-.login-logo img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    padding: 5px;
-}
-
-.marca h1 {
-    margin: 0;
-    font-size: 24px;
-}
-
-.marca p {
-    margin: 4px 0 0;
-    color: var(--muted);
-    font-size: 13px;
-}
-
-.header-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.conexion {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    padding: 9px 14px;
-    border: 1px solid var(--borde);
-    border-radius: 999px;
-    background: rgba(255,255,255,.025);
-    font-weight: bold;
-    font-size: 13px;
-}
-
-.punto {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: var(--rojo);
-}
-
-.punto.online {
-    background: var(--verde);
-    box-shadow: 0 0 13px rgba(32,199,122,.75);
-}
-
-.btn {
-    border: 1px solid var(--borde);
-    border-radius: 12px;
-    padding: 10px 14px;
-    cursor: pointer;
-    color: var(--texto);
-    background: rgba(255,255,255,.035);
-    font-weight: bold;
-}
-
-.btn:hover {
-    border-color: rgba(32,199,122,.45);
-}
-
-.btn-primary {
-    color: #04140b;
-    border: 0;
-    background: linear-gradient(135deg, var(--verde), var(--verde2));
-}
-
-.contenedor {
-    max-width: 1500px;
-    margin: auto;
-    padding: 26px 24px;
-}
-
-.resumen {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 14px;
-    margin-bottom: 20px;
-}
-
-.resumen-card {
-    background: linear-gradient(180deg, rgba(17,34,25,.96), rgba(11,23,17,.96));
-    border: 1px solid var(--borde);
-    border-radius: 17px;
-    padding: 17px;
-    box-shadow: var(--sombra);
-}
-
-.resumen-label {
-    color: var(--muted);
-    font-size: 10px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-}
-
-.resumen-valor {
-    font-size: 24px;
-    font-weight: bold;
-}
-
-.resumen-valor.alarma {
-    color: var(--rojo);
-}
-
-.torres-grid {
-    display: grid;
-    grid-template-columns: repeat(3,1fr);
-    gap: 18px;
-}
-
-.torre {
-    position: relative;
-    overflow: hidden;
-    background: linear-gradient(180deg, rgba(17,34,25,.97), rgba(10,22,16,.97));
-    border: 1px solid var(--borde);
-    border-radius: var(--radio);
-    padding: 21px;
-    box-shadow: var(--sombra);
-    transition: border-color .2s, box-shadow .2s;
-}
-
-.torre.torre-alerta {
-    border-color: rgba(255,100,112,.75);
-    box-shadow: 0 0 0 1px rgba(255,100,112,.12), 0 12px 35px rgba(0,0,0,.35);
-}
-
-.torre::before {
-    content: "";
-    position: absolute;
-    width: 220px;
-    height: 220px;
-    border-radius: 50%;
-    right: -90px;
-    top: -90px;
-    background: radial-gradient(circle, rgba(32,199,122,.14), transparent 68%);
-    pointer-events: none;
-}
-
-.torre-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 10px;
-}
-
-.torre-titulo {
-    font-size: 21px;
-    font-weight: bold;
-}
-
-.sensor-nombre {
-    color: var(--muted);
-    font-size: 12px;
-    margin-top: 5px;
-}
-
-.badges {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-}
-
-.badge {
-    padding: 6px 10px;
-    border-radius: 999px;
-    font-size: 10px;
-    font-weight: bold;
-    white-space: nowrap;
-}
-
-.badge-online {
-    color: #caffdf;
-    background: rgba(32,199,122,.14);
-    border: 1px solid rgba(32,199,122,.20);
-}
-
-.badge-offline {
-    color: #ffd2d6;
-    background: rgba(255,100,112,.10);
-    border: 1px solid rgba(255,100,112,.20);
-}
-
-.badge-espera {
-    color: #ffe2a6;
-    background: rgba(255,200,87,.10);
-    border: 1px solid rgba(255,200,87,.20);
-}
-
-.badge-alarma {
-    color: #ffd2d6;
-    background: rgba(255,100,112,.16);
-    border: 1px solid rgba(255,100,112,.32);
-}
-
-.metric-principal {
-    margin: 26px 0 16px;
-    padding: 18px;
-    text-align: center;
-    border: 1px solid rgba(32,199,122,.10);
-    border-radius: 17px;
-    background: rgba(32,199,122,.045);
-}
-
-.metric-label {
-    color: var(--muted);
-    font-size: 10px;
-    letter-spacing: 1.1px;
-    text-transform: uppercase;
-}
-
-.metric-numero {
-    margin-top: 8px;
-    font-size: 49px;
-    line-height: 1;
-    font-weight: bold;
-    color: var(--verde);
-}
-
-.metric-numero.alerta {
-    color: var(--rojo);
-}
-
-.metric-unidad {
-    font-size: 20px;
-    color: var(--texto);
-}
-
-.metricas-secundarias {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-}
-
-.mini-metric {
-    padding: 14px;
-    border-radius: 14px;
-    background: rgba(255,255,255,.025);
-    border: 1px solid rgba(255,255,255,.055);
-    min-height: 100px;
-}
-
-.mini-label {
-    color: var(--muted);
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: .7px;
-    min-height: 25px;
-}
-
-.mini-value {
-    margin-top: 7px;
-    font-size: 25px;
-    font-weight: bold;
-}
-
-.mini-source {
-    margin-top: 6px;
-    font-size: 10px;
-    color: var(--muted);
-}
-
-.hydronix-box {
-    margin-top: 10px;
-    padding: 14px;
-    border-radius: 14px;
-    background: rgba(74,163,255,.045);
-    border: 1px solid rgba(74,163,255,.13);
-}
-
-.hydronix-head {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    align-items: center;
-}
-
-.hydronix-title {
-    font-size: 11px;
-    color: var(--muted);
-    letter-spacing: .8px;
-    text-transform: uppercase;
-}
-
-.hydronix-value {
-    margin-top: 8px;
-    font-size: 28px;
-    font-weight: bold;
-    color: var(--azul);
-}
-
-.alarmas-torre {
-    margin-top: 14px;
-    border-top: 1px solid rgba(255,255,255,.06);
-    padding-top: 13px;
-}
-
-.alarma-linea {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 10px;
-    align-items: center;
-    margin: 8px 0;
-    font-size: 11px;
-}
-
-.alarma-linea span:first-child {
-    color: var(--muted);
-}
-
-.limites {
-    text-align: right;
-}
-
-.datos {
-    margin-top: 13px;
-    border-top: 1px solid rgba(255,255,255,.06);
-    padding-top: 12px;
-}
-
-.fila {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    margin: 9px 0;
-    font-size: 11px;
-}
-
-.fila span:first-child {
-    color: var(--muted);
-}
-
-.fila strong {
-    text-align: right;
-}
-
-.historico {
-    margin-top: 20px;
-    padding: 21px;
-    background: linear-gradient(180deg, rgba(17,34,25,.96), rgba(10,22,16,.96));
-    border: 1px solid var(--borde);
-    border-radius: var(--radio);
-    box-shadow: var(--sombra);
-}
-
-.hist-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 20px;
-    flex-wrap: wrap;
-}
-
-.hist-header h2 {
-    margin: 0;
-    font-size: 19px;
-}
-
-.hist-header p {
-    margin: 5px 0 0;
-    color: var(--muted);
-    font-size: 12px;
-}
-
-.leyenda {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-}
-
-.leyenda-item {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-size: 11px;
-    color: var(--muted);
-}
-
-.leyenda-color {
-    width: 22px;
-    height: 3px;
-    border-radius: 3px;
-}
-
-.linea1 { background: #20c77a; }
-.linea2 { background: #4aa3ff; }
-.linea3 { background: #ffc857; }
-
-.grafica {
-    width: 100%;
-    height: 270px;
-    margin-top: 18px;
-    overflow: hidden;
-    border-radius: 15px;
-    border: 1px solid rgba(255,255,255,.05);
-    background:
-        linear-gradient(to right, rgba(255,255,255,.025) 1px, transparent 1px),
-        linear-gradient(to top, rgba(255,255,255,.025) 1px, transparent 1px);
-    background-size: 12.5% 20%;
-}
-
-.grafica svg {
-    width: 100%;
-    height: 100%;
-}
-
-.overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    background: rgba(4,10,7,.85);
-    backdrop-filter: blur(7px);
-}
-
-.overlay.oculto {
-    display: none;
-}
-
-.login,
-.modal {
-    width: 100%;
-    max-width: 460px;
-    max-height: 92vh;
-    overflow: auto;
-    padding: 27px;
-    border-radius: 23px;
-    background: linear-gradient(180deg, #12251b, #0a1710);
-    border: 1px solid var(--borde);
-    box-shadow: var(--sombra);
-}
-
-.modal {
-    max-width: 900px;
-}
-
-.login-marca {
-    display: flex;
-    align-items: center;
-    gap: 13px;
-    margin-bottom: 18px;
-}
-
-.login h2,
-.modal h2 {
-    margin: 0;
-}
-
-.login p,
-.modal p {
-    color: var(--muted);
-    line-height: 1.5;
-    font-size: 13px;
-}
-
-.login input,
-.modal input {
-    width: 100%;
-    padding: 11px;
-    color: white;
-    background: rgba(255,255,255,.035);
-    border: 1px solid rgba(255,255,255,.09);
-    border-radius: 10px;
-    outline: none;
-}
-
-.login input {
-    margin-top: 11px;
-    padding: 14px;
-}
-
-.login input:focus,
-.modal input:focus {
-    border-color: rgba(32,199,122,.50);
-}
-
-.login button {
-    width: 100%;
-    margin-top: 13px;
-    padding: 14px;
-}
-
-.login-error,
-.config-status {
-    min-height: 20px;
-    margin-top: 10px;
-    font-size: 12px;
-    color: var(--rojo);
-}
-
-.config-status.ok {
-    color: var(--verde);
-}
-
-.config-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    margin-top: 18px;
-}
-
-.config-torre {
-    padding: 14px;
-    border-radius: 15px;
-    border: 1px solid rgba(255,255,255,.07);
-    background: rgba(255,255,255,.025);
-}
-
-.config-torre h3 {
-    margin: 0 0 12px;
-    font-size: 16px;
-}
-
-.config-seccion {
-    margin-top: 12px;
-}
-
-.config-seccion-title {
-    font-size: 11px;
-    color: var(--muted);
-    margin-bottom: 8px;
-    text-transform: uppercase;
-    letter-spacing: .7px;
-}
-
-.campos {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-}
-
-.campo label {
-    display: block;
-    color: var(--muted);
-    font-size: 10px;
-    margin-bottom: 5px;
-}
-
-.modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 9px;
-    margin-top: 18px;
-}
-
-.aviso-hydronix {
-    margin-top: 20px;
-    padding: 14px 16px;
-    border-radius: 14px;
-    color: #c9d9ff;
-    background: rgba(74,163,255,.06);
-    border: 1px solid rgba(74,163,255,.14);
-    font-size: 12px;
-    line-height: 1.5;
-}
-
-footer {
-    text-align: center;
-    padding: 24px;
-    color: var(--muted);
-    font-size: 11px;
-}
-
-@media(max-width:1200px) {
-    .resumen {
-        grid-template-columns: repeat(3,1fr);
-    }
-
-    .torres-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media(max-width:850px) {
-    .config-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media(max-width:650px) {
-    .header-inner {
-        align-items: flex-start;
-        flex-direction: column;
-    }
-
-    .contenedor {
-        padding: 18px 13px;
-    }
-
-    .resumen {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .metricas-secundarias {
-        grid-template-columns: 1fr;
-    }
-
-    .metric-numero {
-        font-size: 43px;
-    }
+:root{
+  --bg:#030907;
+  --bg2:#06110c;
+  --panel:#081610;
+  --panel2:#0b2017;
+  --panel3:#0f2b1e;
+  --line:rgba(77,185,123,.25);
+  --green:#28d77f;
+  --green2:#17a85e;
+  --lime:#9cdf4b;
+  --blue:#38a8ff;
+  --cyan:#3bd7e7;
+  --yellow:#ffc43d;
+  --orange:#ff7a32;
+  --red:#ff4d45;
+  --purple:#c06cff;
+  --text:#f2f8f4;
+  --muted:#8eaa98;
+  --shadow:0 18px 50px rgba(0,0,0,.42);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  min-height:100vh;
+  color:var(--text);
+  font-family:"Segoe UI",Arial,Helvetica,sans-serif;
+  background:
+    radial-gradient(circle at 50% -10%,rgba(33,172,101,.08),transparent 34%),
+    radial-gradient(circle at 0% 50%,rgba(19,95,55,.08),transparent 25%),
+    linear-gradient(180deg,#020806 0%,#06110c 65%,#030907 100%);
+}
+button,input{font:inherit}
+button{cursor:pointer}
+.hidden{display:none!important}
+
+/* HEADER */
+.topbar{
+  height:78px;
+  position:sticky;
+  top:0;
+  z-index:30;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:10px 22px;
+  border-bottom:1px solid var(--line);
+  background:rgba(2,9,6,.92);
+  backdrop-filter:blur(16px);
+}
+.brand{display:flex;align-items:center;gap:14px;min-width:0}
+.logo-box{
+  width:54px;height:54px;border-radius:13px;
+  display:grid;place-items:center;
+  border:1px solid rgba(40,215,127,.3);
+  background:#0a2117;overflow:hidden;flex:0 0 auto;
+}
+.logo-box img{width:100%;height:100%;object-fit:contain;background:white}
+.logo-fallback{font-weight:900;color:var(--green);font-size:11px}
+.brand-name{font-size:27px;font-weight:900;letter-spacing:.4px;line-height:1}
+.brand-divider{width:1px;height:46px;background:var(--line);margin:0 4px}
+.page-title h1{font-size:22px;margin:0;font-weight:750;white-space:nowrap}
+.page-title p{font-size:13px;margin:4px 0 0;color:var(--green)}
+.header-right{display:flex;align-items:center;gap:9px}
+.header-box{
+  min-height:48px;padding:7px 13px;border-radius:12px;
+  border:1px solid var(--line);background:rgba(10,28,19,.72);
+  display:flex;align-items:center;gap:11px;
+}
+.connection-dot{width:9px;height:9px;border-radius:50%;background:#61766a}
+.connection-dot.online{background:var(--green);box-shadow:0 0 15px rgba(40,215,127,.8)}
+.connection-text strong{font-size:11px;display:block}.connection-text span{font-size:10px;color:var(--muted)}
+.clock{font-variant-numeric:tabular-nums;font-size:12px;color:#c6d7cc}
+.alarm-button{
+  border:1px solid rgba(255,77,69,.28);background:rgba(255,77,69,.07);color:#fff;
+  border-radius:12px;padding:12px 14px;font-weight:750;position:relative
+}
+.alarm-count-badge{
+  position:absolute;right:-5px;top:-5px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;
+  background:var(--red);display:grid;place-items:center;font-size:10px;font-weight:900
+}
+
+/* LAYOUT */
+.dashboard{max-width:1680px;margin:auto;padding:14px 18px 96px}
+.operational-grid{
+  display:grid;
+  grid-template-columns:330px minmax(520px,1fr) 360px;
+  gap:14px;
+  align-items:stretch;
+}
+.panel{
+  border:1px solid var(--line);
+  background:linear-gradient(145deg,rgba(9,25,17,.96),rgba(5,17,11,.96));
+  box-shadow:var(--shadow);
+  border-radius:16px;
+}
+.panel-title{
+  margin:0;padding:13px 15px 10px;color:#62e99b;font-size:13px;font-weight:850;
+  letter-spacing:.6px;text-transform:uppercase;border-bottom:1px solid rgba(77,185,123,.16)
+}
+.left-column,.right-column{display:grid;gap:12px;align-content:start}
+
+/* PROCESS SUMMARY */
+.process-list{padding:10px;display:grid;gap:8px}
+.process-row{
+  display:grid;grid-template-columns:46px 1fr auto;gap:10px;align-items:center;
+  min-height:75px;padding:10px;border:1px solid rgba(77,185,123,.16);border-radius:12px;background:rgba(11,30,21,.58)
+}
+.process-icon{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:21px;font-weight:900}
+.process-icon.hot{color:var(--orange);background:rgba(255,122,50,.08);border:1px solid rgba(255,122,50,.25)}
+.process-icon.grain{color:var(--yellow);background:rgba(255,196,61,.08);border:1px solid rgba(255,196,61,.25)}
+.process-icon.sensor{color:var(--purple);background:rgba(192,108,255,.08);border:1px solid rgba(192,108,255,.25)}
+.process-name{font-size:12px;font-weight:800}.process-desc{font-size:10px;color:var(--muted);line-height:1.3;margin-top:3px}
+.process-value{font-size:20px;font-weight:850;text-align:right;white-space:nowrap}
+.process-value.hot{color:var(--orange)}.process-value.grain{color:var(--yellow)}.process-value.sensor{color:var(--purple)}
+
+.legend{padding:12px 14px 14px;display:grid;gap:11px}
+.legend-item{display:grid;grid-template-columns:45px 1fr;gap:9px;align-items:center;font-size:11px;color:#d1ded5}
+.legend-arrow{height:5px;border-radius:5px;position:relative;margin-right:9px}
+.legend-arrow:after{content:"";position:absolute;right:-8px;top:-5px;border-top:7px solid transparent;border-bottom:7px solid transparent;border-left:10px solid currentColor}
+.legend-arrow.hot{background:var(--red);color:var(--red);box-shadow:0 0 10px rgba(255,77,69,.35)}
+.legend-arrow.cold{background:var(--blue);color:var(--blue);box-shadow:0 0 10px rgba(56,168,255,.35)}
+.legend-arrow.grain{background:var(--yellow);color:var(--yellow);box-shadow:0 0 10px rgba(255,196,61,.35)}
+.sensor-key{width:14px;height:14px;border-radius:50%;border:3px solid currentColor;margin-left:13px;box-shadow:0 0 9px currentColor}
+.sensor-key.dht{color:var(--lime)}.sensor-key.pt{color:var(--purple)}.sensor-key.hyd{color:var(--cyan)}
+.legend-item small{display:block;color:var(--muted);font-size:9px;margin-top:2px}
+
+/* CENTRAL TOWER */
+.center-panel{position:relative;overflow:hidden;min-height:650px}
+.center-top{
+  position:absolute;z-index:8;left:14px;right:14px;top:12px;display:flex;align-items:center;justify-content:space-between;gap:12px
+}
+.selected-name{font-size:12px;color:var(--muted)}.selected-name b{font-size:16px;color:#fff;margin-left:6px}
+.tower-selector{display:flex;gap:6px}
+.tower-selector button{
+  min-width:38px;height:34px;border-radius:9px;border:1px solid var(--line);background:#0b2418;color:#9cbaa7;font-weight:800
+}
+.tower-selector button.active{color:#fff;border-color:var(--green);background:#0e3a27;box-shadow:0 0 15px rgba(40,215,127,.13)}
+.tower-stage{position:absolute;inset:0;padding-top:42px}
+.tower-stage:before{
+  content:"";position:absolute;inset:0;background:
+  radial-gradient(circle at 49% 50%,rgba(255,196,61,.05),transparent 30%),
+  radial-gradient(circle at 30% 50%,rgba(255,77,69,.05),transparent 25%),
+  radial-gradient(circle at 72% 50%,rgba(56,168,255,.05),transparent 25%);
+  pointer-events:none
+}
+.tower-svg{width:100%;height:100%;display:block}
+.flow-hot,.flow-cold,.flow-grain{filter:drop-shadow(0 0 7px currentColor)}
+.flow-hot{color:var(--red)}.flow-cold{color:var(--blue)}.flow-grain{color:var(--yellow)}
+.hot-arrow{animation:hotRise 2s linear infinite;transform-origin:center;transform-box:fill-box}
+.hot-arrow:nth-child(2){animation-delay:-.65s}.hot-arrow:nth-child(3){animation-delay:-1.3s}
+.cold-arrow{animation:coldRise 2.4s linear infinite;transform-origin:center;transform-box:fill-box}
+.cold-arrow:nth-child(2){animation-delay:-.8s}.cold-arrow:nth-child(3){animation-delay:-1.6s}
+.grain-arrow{animation:grainFall 2.1s ease-in-out infinite;transform-origin:center;transform-box:fill-box}
+.grain-arrow:nth-child(2){animation-delay:-.55s}.grain-arrow:nth-child(3){animation-delay:-1.1s}.grain-arrow:nth-child(4){animation-delay:-1.65s}
+.grain-dot{animation:grainParticle 2.7s linear infinite}.grain-dot:nth-child(2n){animation-delay:-.9s}.grain-dot:nth-child(3n){animation-delay:-1.8s}
+@keyframes hotRise{0%{transform:translateY(24px);opacity:.15}35%{opacity:1}100%{transform:translateY(-24px);opacity:.15}}
+@keyframes coldRise{0%{transform:translateY(22px);opacity:.18}40%{opacity:1}100%{transform:translateY(-22px);opacity:.18}}
+@keyframes grainFall{0%,100%{transform:translateY(-8px);opacity:.45}50%{transform:translateY(12px);opacity:1}}
+@keyframes grainParticle{0%{transform:translateY(-60px);opacity:0}15%{opacity:.65}85%{opacity:.65}100%{transform:translateY(115px);opacity:0}}
+
+.sensor-callout{
+  position:absolute;z-index:10;min-width:135px;padding:9px 10px;border-radius:10px;
+  background:rgba(4,15,10,.93);backdrop-filter:blur(6px);box-shadow:0 8px 25px rgba(0,0,0,.3)
+}
+.sensor-callout .sc-title{font-size:12px;font-weight:850}.sensor-callout .sc-desc{font-size:9px;color:#d3ddd7;margin-top:2px}.sensor-callout .sc-value{font-size:17px;font-weight:850;margin-top:6px}.sensor-callout .sc-sub{font-size:10px;margin-top:3px;color:var(--muted)}
+.sensor-callout.dht{left:3%;top:31%;border:1px solid rgba(156,223,75,.62);color:var(--lime)}
+.sensor-callout.pt{right:2%;top:61%;border:1px solid rgba(192,108,255,.62);color:var(--purple)}
+.sensor-callout.hyd{right:2%;top:75%;border:1px solid rgba(59,215,231,.62);color:var(--cyan)}
+.sensor-callout:after{content:"";position:absolute;height:2px;width:55px;top:50%;background:currentColor;opacity:.8}
+.sensor-callout.dht:after{left:100%}.sensor-callout.pt:after,.sensor-callout.hyd:after{right:100%}
+.sensor-callout:before{content:"";position:absolute;width:10px;height:10px;border:3px solid currentColor;border-radius:50%;top:calc(50% - 6px);background:#07110c;box-shadow:0 0 9px currentColor}
+.sensor-callout.dht:before{left:calc(100% + 50px)}.sensor-callout.pt:before,.sensor-callout.hyd:before{right:calc(100% + 50px)}
+
+/* RIGHT */
+.availability{padding:14px;display:grid;grid-template-columns:130px 1fr;gap:12px;align-items:center}
+.gauge{
+  width:120px;height:120px;border-radius:50%;display:grid;place-items:center;position:relative;
+  background:conic-gradient(var(--lime) var(--gauge,0%),#143021 0)
+}
+.gauge:after{content:"";position:absolute;inset:12px;border-radius:50%;background:#07150e;border:1px solid rgba(77,185,123,.2)}
+.gauge-inner{z-index:2;text-align:center}.gauge-inner b{font-size:30px}.gauge-inner span{display:block;color:var(--muted);font-size:9px;text-transform:uppercase}
+.kpi-list{display:grid;gap:9px}
+.kpi-line{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(77,185,123,.12);padding-bottom:7px;font-size:10px;color:#cbd9d0}
+.kpi-line b{font-size:15px;color:#fff}
+.system-ok{margin:0 13px 13px;padding:12px;border:1px solid rgba(40,215,127,.42);border-radius:10px;text-align:center;color:var(--green);font-size:11px;font-weight:850;background:rgba(40,215,127,.05)}
+.system-ok.warn{color:var(--yellow);border-color:rgba(255,196,61,.42);background:rgba(255,196,61,.05)}
+.system-ok.bad{color:var(--red);border-color:rgba(255,77,69,.42);background:rgba(255,77,69,.05)}
+
+.sensor-status-grid{padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sensor-tile{border:1px solid rgba(77,185,123,.16);background:rgba(10,31,21,.6);border-radius:11px;padding:10px;min-height:74px}
+.sensor-tile .st-label{font-size:10px;color:#d5e0d9}.sensor-tile .st-value{font-size:12px;font-weight:850;margin-top:7px}.sensor-tile .st-sub{font-size:9px;color:var(--muted);margin-top:4px}
+.status-online{color:var(--green)}.status-offline{color:var(--red)}.status-wait{color:var(--yellow)}
+
+/* CARDS */
+.cards-section{margin-top:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.tower-card{
+  border:1px solid var(--line);background:linear-gradient(145deg,#081b12,#06130d);border-radius:15px;padding:13px;
+  transition:.2s;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.28)
+}
+.tower-card:hover{transform:translateY(-2px);border-color:rgba(40,215,127,.55)}
+.tower-card.active{border-color:var(--green);box-shadow:0 0 0 1px rgba(40,215,127,.2),0 10px 30px rgba(0,0,0,.3)}
+.tower-card.alert{border-color:rgba(255,77,69,.72);box-shadow:0 0 20px rgba(255,77,69,.09)}
+.card-head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(77,185,123,.13);padding-bottom:9px}
+.card-head h3{margin:0;font-size:15px}.node-badge{font-size:9px;padding:5px 8px;border-radius:999px;border:1px solid rgba(40,215,127,.3);color:var(--green);background:rgba(40,215,127,.08);font-weight:850}
+.node-badge.offline{border-color:rgba(255,77,69,.3);color:var(--red);background:rgba(255,77,69,.08)}
+.card-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:10px}
+.card-metric{padding:8px;border-right:1px solid rgba(77,185,123,.12);min-width:0}.card-metric:last-child{border-right:0}
+.card-metric span{display:block;color:#a7b9ad;font-size:9px;min-height:22px}.card-metric b{font-size:16px;display:block;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-metric.rice b{color:var(--purple)}.card-metric.amb b{color:var(--lime)}.card-metric.hum b{color:#9bdc45}.card-metric.hyd b{color:var(--cyan)}
+.sparkline{height:4px;border-radius:99px;background:#153322;margin-top:7px;overflow:hidden}.sparkline i{display:block;height:100%;width:60%;background:currentColor;border-radius:99px;opacity:.7}
+
+/* TREND */
+.trend-panel{margin-top:13px;padding:14px;display:none}
+.trend-panel.open{display:block}
+.trend-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.trend-head h3{margin:0;font-size:14px}.trend-head small{color:var(--muted)}
+.canvas-wrap{height:260px}canvas{width:100%;height:100%;display:block}
+
+/* BOTTOM NAV */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;z-index:25;
+  height:66px;padding:8px 18px;background:rgba(4,12,8,.95);backdrop-filter:blur(14px);border-top:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;gap:5px
+}
+.nav-btn{
+  min-width:145px;border:0;border-left:1px solid rgba(77,185,123,.12);background:transparent;color:#95a99d;
+  padding:10px 18px;border-radius:7px;font-size:11px;font-weight:750
+}
+.nav-btn:hover,.nav-btn.active{color:#fff;background:rgba(40,215,127,.08);box-shadow:inset 0 -2px 0 var(--green)}
+
+/* LOGIN */
+.overlay{
+  position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.82);backdrop-filter:blur(8px);display:grid;place-items:center;padding:18px
+}
+.login-card{width:min(440px,95vw);padding:24px;border:1px solid rgba(40,215,127,.3);border-radius:20px;background:#07150e;box-shadow:0 25px 80px #0009}
+.login-brand{display:flex;gap:12px;align-items:center;margin-bottom:19px}.login-brand h2{margin:0}.login-brand p{margin:4px 0 0;color:var(--muted);font-size:11px}
+.login-card label{display:block;font-size:11px;color:#a5bdad;margin-bottom:6px}.login-card input{width:100%;padding:12px 13px;color:#fff;background:#0b2418;border:1px solid rgba(77,185,123,.25);border-radius:11px;outline:0}.login-card input:focus{border-color:var(--green)}
+.login-card .login-btn{width:100%;margin-top:12px;padding:12px;border:1px solid rgba(40,215,127,.4);border-radius:11px;background:#0f3e29;color:#fff;font-weight:850}
+.login-error{min-height:18px;color:var(--yellow);font-size:10px;text-align:center;margin-top:9px}.login-note{font-size:9px;color:#668474;text-align:center;margin-top:12px}
+
+/* MODAL ALARMS */
+.modal-overlay{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.76);backdrop-filter:blur(7px);display:grid;place-items:center;padding:15px}
+.modal{width:min(980px,96vw);max-height:90vh;overflow:auto;background:#07150e;border:1px solid rgba(77,185,123,.28);border-radius:18px;box-shadow:0 24px 80px #000a}
+.modal-head{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:15px 18px;background:#081a11;border-bottom:1px solid var(--line)}
+.modal-head h2{margin:0;font-size:17px}.close-btn{width:36px;height:36px;border:1px solid var(--line);border-radius:10px;background:#0d2c1e;color:#fff}
+.alarm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px}.alarm-tower{border:1px solid rgba(77,185,123,.17);border-radius:13px;padding:12px;background:#0a2016}.alarm-tower h3{margin:0 0 11px;font-size:14px}
+.alarm-group{margin-top:10px}.alarm-group-title{font-size:10px;color:#8fc4a5;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px}.input-pair{display:grid;grid-template-columns:1fr 1fr;gap:7px}.field label{font-size:9px;color:var(--muted);display:block;margin-bottom:4px}.field input{width:100%;background:#07160f;color:#fff;border:1px solid rgba(77,185,123,.22);border-radius:8px;padding:9px}
+.modal-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px 15px}.config-status{font-size:10px;color:var(--yellow)}.config-status.ok{color:var(--green)}.save-btn{padding:10px 15px;border:1px solid rgba(40,215,127,.45);background:#0d3a26;color:#fff;border-radius:10px;font-weight:800}
+
+/* ALERTS */
+.value-alert{animation:pulseAlert 1.1s ease-in-out infinite;color:var(--red)!important}
+@keyframes pulseAlert{50%{opacity:.55;text-shadow:0 0 12px rgba(255,77,69,.75)}}
+
+@media(max-width:1350px){
+  .operational-grid{grid-template-columns:290px minmax(480px,1fr) 310px}
+  .sensor-callout{min-width:115px}.sensor-callout:after{width:38px}.sensor-callout.dht:before{left:calc(100% + 33px)}.sensor-callout.pt:before,.sensor-callout.hyd:before{right:calc(100% + 33px)}
+  .card-metric b{font-size:14px}
+}
+@media(max-width:1080px){
+  .page-title{display:none}.brand-divider{display:none}.operational-grid{grid-template-columns:1fr}.left-column,.right-column{grid-template-columns:1fr 1fr}.center-panel{min-height:680px;order:-1}.cards-section{grid-template-columns:1fr}.card-metric b{font-size:17px}.bottom-nav{overflow:auto;justify-content:flex-start}.nav-btn{min-width:130px}
+}
+@media(max-width:700px){
+  .topbar{height:auto;min-height:70px;padding:9px 11px}.brand-name{font-size:20px}.logo-box{width:45px;height:45px}.header-box.clock-box{display:none}.alarm-button{padding:10px}.dashboard{padding:10px 10px 92px}.left-column,.right-column{grid-template-columns:1fr}.center-panel{min-height:570px}.sensor-callout{min-width:105px;padding:7px}.sensor-callout .sc-desc{display:none}.sensor-callout .sc-value{font-size:14px}.sensor-callout.dht{left:1%}.sensor-callout.pt,.sensor-callout.hyd{right:1%}.cards-section{gap:8px}.card-metrics{grid-template-columns:1fr 1fr}.card-metric{border-right:0;border-bottom:1px solid rgba(77,185,123,.1)}.alarm-grid{grid-template-columns:1fr}.availability{grid-template-columns:115px 1fr}.gauge{width:105px;height:105px}.nav-btn{min-width:115px;padding:9px}
 }
 </style>
 </head>
-
 <body>
 
+<!-- LOGIN -->
 <div class="overlay" id="loginOverlay">
-    <div class="login">
-        <div class="login-marca">
-            <div class="login-logo">
-                <img src="logo-sismar.png" alt="SISMAR">
-            </div>
-
-            <div>
-                <h2>SISMAR</h2>
-                <div style="color:var(--muted);font-size:13px;margin-top:3px">
-                    Monitoreo Integral de Secamiento
-                </div>
-            </div>
-        </div>
-
-        <p>
-            Ingresa la contraseña MQTT para acceder al monitoreo remoto.
-        </p>
-
-        <input
-            id="mqttPassword"
-            type="password"
-            placeholder="Contraseña MQTT"
-        >
-
-        <button class="btn btn-primary" onclick="conectar()">
-            INGRESAR
-        </button>
-
-        <div class="login-error" id="loginError"></div>
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="logo-box"><img src="logo-sismar.png" alt="SISMAR" onerror="this.style.display='none';this.parentNode.innerHTML='<span class=&quot;logo-fallback&quot;>SISMAR</span>'"></div>
+      <div><h2>SISMAR</h2><p>Monitoreo Integral de Secamiento</p></div>
     </div>
+    <label>Usuario MQTT</label>
+    <input value="dashboard_sismar" disabled>
+    <div style="height:10px"></div>
+    <label>Contraseña MQTT</label>
+    <input id="mqttPassword" type="password" autocomplete="current-password" placeholder="Contraseña de dashboard_sismar">
+    <button class="login-btn" onclick="conectar()">CONECTAR A SISMAR</button>
+    <div class="login-error" id="loginError"></div>
+    <div class="login-note">La contraseña se usa solo durante esta sesión del navegador y no se guarda en la página.</div>
+  </div>
 </div>
 
-
-<div class="overlay oculto" id="configOverlay">
-    <div class="modal">
-        <h2>Configuración de alarmas</h2>
-
-        <p>
-            Límites de temperatura baja y alta por torre.
-            Deja un campo vacío para desactivar ese límite.
-        </p>
-
-        <div class="config-grid" id="configGrid"></div>
-
-        <div class="config-status" id="configStatus"></div>
-
-        <div class="modal-actions">
-            <button class="btn" onclick="cerrarConfiguracion()">
-                CANCELAR
-            </button>
-
-            <button class="btn btn-primary" onclick="guardarAlarmas()">
-                GUARDAR EN PICO
-            </button>
-        </div>
+<!-- ALARM CONFIG -->
+<div class="modal-overlay hidden" id="alarmModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h2>Configuración de alarmas</h2><div style="font-size:10px;color:var(--muted);margin-top:3px">Límites de temperatura del arroz y temperatura ambiente.</div></div>
+      <button class="close-btn" onclick="cerrarAlarmas()">✕</button>
     </div>
+    <div class="alarm-grid" id="alarmGrid"></div>
+    <div class="modal-actions">
+      <div class="config-status" id="configStatus"></div>
+      <button class="save-btn" onclick="guardarAlarmas()">GUARDAR EN LAS 3 TORRES</button>
+    </div>
+  </div>
 </div>
 
-
-<header>
-    <div class="header-inner">
-
-        <div class="marca">
-            <div class="logo">
-                <img src="logo-sismar.png" alt="SISMAR">
-            </div>
-
-            <div>
-                <h1>SISMAR</h1>
-                <p>
-                    Monitoreo Integral de Secamiento · 3 Torres
-                </p>
-            </div>
-        </div>
-
-        <div class="header-actions">
-            <button class="btn" onclick="abrirConfiguracion()">
-                ⚙ ALARMAS
-            </button>
-
-            <div class="conexion">
-                <span class="punto" id="puntoConexion"></span>
-                <span id="textoConexion">Desconectado</span>
-            </div>
-        </div>
-
+<header class="topbar">
+  <div class="brand">
+    <div class="logo-box"><img src="logo-sismar.png" alt="SISMAR" onerror="this.style.display='none';this.parentNode.innerHTML='<span class=&quot;logo-fallback&quot;>SISMAR</span>'"></div>
+    <div class="brand-name">SISMAR</div>
+    <div class="brand-divider"></div>
+    <div class="page-title"><h1>Monitoreo Integral de Secamiento</h1><p>Vista operativa de flujo y sensores</p></div>
+  </div>
+  <div class="header-right">
+    <div class="header-box">
+      <div class="connection-dot" id="connectionDot"></div>
+      <div class="connection-text"><strong id="connectionText">Desconectado</strong><span>Sistema MQTT</span></div>
     </div>
+    <div class="header-box clock-box"><span style="color:var(--green)">◷</span><span class="clock" id="clock">--:--:--</span></div>
+    <button class="alarm-button" onclick="abrirAlarmas()">⚠ ALARMAS <span class="alarm-count-badge" id="alarmHeaderCount">0</span></button>
+  </div>
 </header>
 
-
-<main class="contenedor">
-
-    <section class="resumen">
-
-        <div class="resumen-card">
-            <div class="resumen-label">
-                Sensores Pico Online
-            </div>
-            <div class="resumen-valor" id="sensoresOnline">
-                0 / 6
-            </div>
+<main class="dashboard" id="vistaOperativa">
+  <section class="operational-grid">
+    <!-- LEFT -->
+    <div class="left-column">
+      <div class="panel">
+        <h2 class="panel-title">Resumen del proceso · <span id="leftTowerName">Torre 1</span></h2>
+        <div class="process-list">
+          <div class="process-row">
+            <div class="process-icon hot">≋</div>
+            <div><div class="process-name">AIRE CALIENTE · DHT22</div><div class="process-desc">Sensor ubicado en el canal rojo de flujo ascendente.</div></div>
+            <div class="process-value hot" id="leftAmbTemp">-- °C</div>
+          </div>
+          <div class="process-row">
+            <div class="process-icon grain">↓</div>
+            <div><div class="process-name">FLUJO DE GRANO</div><div class="process-desc">El arroz desciende por gravedad hacia la zona de descarga.</div></div>
+            <div class="process-value grain">↓</div>
+          </div>
+          <div class="process-row">
+            <div class="process-icon sensor">°</div>
+            <div><div class="process-name">ZONA DE DESCARGA</div><div class="process-desc">PT100 + Hydronix antes de la tolva de descarga.</div></div>
+            <div class="process-value sensor" id="leftRiceTemp">-- °C</div>
+          </div>
         </div>
+      </div>
 
-        <div class="resumen-card">
-            <div class="resumen-label">
-                Temp. arroz promedio
-            </div>
-            <div class="resumen-valor" id="tempArrozProm">
-                --
-            </div>
+      <div class="panel">
+        <h2 class="panel-title">Leyenda de flujos y sensores</h2>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-arrow hot"></div><div>Aire caliente <small>Flujo ascendente por el canal rojo</small></div></div>
+          <div class="legend-item"><div class="legend-arrow cold"></div><div>Aire frío / ambiente <small>Ingresa por persianas laterales y asciende</small></div></div>
+          <div class="legend-item"><div class="legend-arrow grain"></div><div>Arroz <small>Movimiento descendente hacia la descarga</small></div></div>
+          <div class="legend-item"><div class="sensor-key dht"></div><div>DHT22 <small>Temperatura y humedad ambiente</small></div></div>
+          <div class="legend-item"><div class="sensor-key pt"></div><div>PT100 <small>Temperatura del arroz</small></div></div>
+          <div class="legend-item"><div class="sensor-key hyd"></div><div>Hydronix <small>Humedad del arroz · Modo E</small></div></div>
         </div>
-
-        <div class="resumen-card">
-            <div class="resumen-label">
-                Temp. ambiente promedio
-            </div>
-            <div class="resumen-valor" id="tempAmbProm">
-                --
-            </div>
-        </div>
-
-        <div class="resumen-card">
-            <div class="resumen-label">
-                Humedad ambiente promedio
-            </div>
-            <div class="resumen-valor" id="humAmbProm">
-                --
-            </div>
-        </div>
-
-        <div class="resumen-card">
-            <div class="resumen-label">
-                Alarmas activas
-            </div>
-            <div class="resumen-valor" id="alarmasActivas">
-                0
-            </div>
-        </div>
-
-        <div class="resumen-card">
-            <div class="resumen-label">
-                Hydronix Online
-            </div>
-            <div class="resumen-valor" id="hydronixOnline">
-                0 / 3
-            </div>
-        </div>
-
-    </section>
-
-
-    <section class="torres-grid" id="torresGrid"></section>
-
-
-    <div class="aviso-hydronix">
-        <strong>Hydronix Hydro-Mix XT:</strong>
-        los tres sensores se reciben por RS485/Modbus desde el PC.
-        SISMAR utiliza <strong>Modo E</strong> como valor principal de humedad del arroz.
-        La humedad filtrada Modo E se conserva como dato diagnóstico.
+      </div>
     </div>
 
-
-    <section class="historico">
-
-        <div class="hist-header">
-
-            <div>
-                <h2>Temperatura del arroz en tiempo real</h2>
-                <p>
-                    Últimas 60 lecturas PT100 recibidas por torre.
-                </p>
-            </div>
-
-            <div class="leyenda">
-                <div class="leyenda-item">
-                    <span class="leyenda-color linea1"></span>
-                    Torre 1
-                </div>
-
-                <div class="leyenda-item">
-                    <span class="leyenda-color linea2"></span>
-                    Torre 2
-                </div>
-
-                <div class="leyenda-item">
-                    <span class="leyenda-color linea3"></span>
-                    Torre 3
-                </div>
-            </div>
-
+    <!-- CENTER -->
+    <div class="panel center-panel">
+      <div class="center-top">
+        <div class="selected-name">Visualizando <b id="selectedTowerLabel">TORRE 1</b></div>
+        <div class="tower-selector">
+          <button id="select-torre01" class="active" onclick="seleccionarTorre('torre01')">T1</button>
+          <button id="select-torre02" onclick="seleccionarTorre('torre02')">T2</button>
+          <button id="select-torre03" onclick="seleccionarTorre('torre03')">T3</button>
         </div>
+      </div>
 
-        <div class="grafica">
-            <svg viewBox="0 0 1200 270" preserveAspectRatio="none">
+      <div class="tower-stage">
+        <svg class="tower-svg" viewBox="0 0 760 700" preserveAspectRatio="xMidYMid meet" aria-label="Torre de secamiento SISMAR con flujos animados">
+          <defs>
+            <linearGradient id="metal" x1="0" x2="1"><stop offset="0" stop-color="#26352e"/><stop offset=".45" stop-color="#77847d"/><stop offset=".55" stop-color="#394941"/><stop offset="1" stop-color="#17261f"/></linearGradient>
+            <linearGradient id="hotGrad" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#4b120c"/><stop offset=".5" stop-color="#a42312"/><stop offset="1" stop-color="#ff5a1d"/></linearGradient>
+            <linearGradient id="coldGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d4f84"/><stop offset=".55" stop-color="#0a6eb4"/><stop offset="1" stop-color="#072742"/></linearGradient>
+            <linearGradient id="grainGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a6310"/><stop offset=".4" stop-color="#d28b13"/><stop offset="1" stop-color="#7f4f09"/></linearGradient>
+            <radialGradient id="grainGlow"><stop offset="0" stop-color="#ffd95b" stop-opacity=".35"/><stop offset="1" stop-color="#ffd95b" stop-opacity="0"/></radialGradient>
+            <filter id="glow"><feGaussianBlur stdDeviation="4" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <clipPath id="grainClip"><path d="M300 145 L500 145 L500 535 L470 590 L330 590 L300 535 Z"/></clipPath>
+          </defs>
 
-                <polyline
-                    id="linea-torre01"
-                    fill="none"
-                    stroke="#20c77a"
-                    stroke-width="4"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    points=""
-                />
+          <!-- Air stream lines -->
+          <g fill="none" stroke="#ff4d45" stroke-opacity=".25" stroke-width="2">
+            <path d="M95 300 C145 270 155 260 205 255"/><path d="M80 335 C145 305 160 300 205 290"/><path d="M90 370 C145 345 165 335 205 325"/><path d="M100 405 C155 385 170 370 205 360"/>
+          </g>
+          <g fill="none" stroke="#38a8ff" stroke-opacity=".25" stroke-width="2">
+            <path d="M555 255 C610 250 630 235 695 215"/><path d="M555 295 C615 290 640 275 710 250"/><path d="M555 335 C620 330 650 315 720 295"/><path d="M555 375 C620 372 650 360 710 345"/>
+          </g>
 
-                <polyline
-                    id="linea-torre02"
-                    fill="none"
-                    stroke="#4aa3ff"
-                    stroke-width="4"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    points=""
-                />
+          <!-- Roof -->
+          <path d="M255 142 L398 62 L545 142 Z" fill="url(#metal)" stroke="#6b7c73" stroke-width="3"/>
+          <rect x="370" y="42" width="58" height="31" rx="7" fill="url(#metal)" stroke="#7c8d85" stroke-width="2"/>
+          <ellipse cx="399" cy="44" rx="28" ry="8" fill="#6c7b74" stroke="#9aaba2"/>
 
-                <polyline
-                    id="linea-torre03"
-                    fill="none"
-                    stroke="#ffc857"
-                    stroke-width="4"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    points=""
-                />
+          <!-- Left hot channel -->
+          <rect x="205" y="148" width="84" height="390" rx="10" fill="url(#hotGrad)" stroke="#6c3828" stroke-width="3"/>
+          <rect x="215" y="157" width="64" height="372" rx="7" fill="#51160f" fill-opacity=".28" stroke="#ff5b2a" stroke-opacity=".26"/>
+          <g class="flow-hot" fill="#ff7a32" filter="url(#glow)">
+            <path class="hot-arrow" d="M247 445 l-20 28 h12 v35 h16 v-35 h12z"/>
+            <path class="hot-arrow" d="M247 330 l-20 28 h12 v35 h16 v-35 h12z"/>
+            <path class="hot-arrow" d="M247 215 l-20 28 h12 v35 h16 v-35 h12z"/>
+          </g>
 
-            </svg>
+          <!-- Main tower shell -->
+          <path d="M289 140 L510 140 L523 535 L476 610 L323 610 L276 535 Z" fill="#17261f" stroke="#64756c" stroke-width="4"/>
+          <path d="M300 145 L500 145 L500 535 L470 590 L330 590 L300 535 Z" fill="url(#grainGrad)" stroke="#815812" stroke-width="2"/>
+          <ellipse cx="400" cy="365" rx="118" ry="220" fill="url(#grainGlow)"/>
+
+          <!-- Grain texture -->
+          <g clip-path="url(#grainClip)" fill="#ffd25a" opacity=".55">
+            <circle class="grain-dot" cx="330" cy="170" r="3"/><circle class="grain-dot" cx="360" cy="185" r="2.5"/><circle class="grain-dot" cx="395" cy="160" r="3"/><circle class="grain-dot" cx="430" cy="190" r="2.5"/><circle class="grain-dot" cx="470" cy="175" r="3"/>
+            <circle class="grain-dot" cx="345" cy="230" r="2.5"/><circle class="grain-dot" cx="385" cy="245" r="3"/><circle class="grain-dot" cx="450" cy="230" r="2.5"/><circle class="grain-dot" cx="475" cy="275" r="3"/>
+            <circle class="grain-dot" cx="330" cy="315" r="3"/><circle class="grain-dot" cx="370" cy="300" r="2.5"/><circle class="grain-dot" cx="420" cy="320" r="3"/><circle class="grain-dot" cx="465" cy="345" r="2.5"/>
+          </g>
+
+          <!-- Grain arrows -->
+          <g class="flow-grain" fill="#ffc43d" filter="url(#glow)">
+            <path class="grain-arrow" d="M388 180 h24 v45 h18 l-30 38 -30-38 h18z"/>
+            <path class="grain-arrow" d="M388 285 h24 v45 h18 l-30 38 -30-38 h18z"/>
+            <path class="grain-arrow" d="M388 390 h24 v45 h18 l-30 38 -30-38 h18z"/>
+            <path class="grain-arrow" d="M388 490 h24 v35 h18 l-30 38 -30-38 h18z"/>
+          </g>
+
+          <!-- Right cold channel -->
+          <path d="M513 150 L565 170 L565 515 L520 535 Z" fill="url(#coldGrad)" stroke="#225e8c" stroke-width="3"/>
+          <g stroke="#6cbfff" stroke-opacity=".35" stroke-width="3">
+            <line x1="528" y1="190" x2="557" y2="180"/><line x1="528" y1="225" x2="557" y2="215"/><line x1="528" y1="260" x2="557" y2="250"/><line x1="528" y1="295" x2="557" y2="285"/><line x1="528" y1="330" x2="557" y2="320"/><line x1="528" y1="365" x2="557" y2="355"/><line x1="528" y1="400" x2="557" y2="390"/><line x1="528" y1="435" x2="557" y2="425"/>
+          </g>
+          <g class="flow-cold" fill="#38a8ff" filter="url(#glow)">
+            <path class="cold-arrow" d="M542 190 l-20 26 h13 v34 h15 v-34 h12z"/>
+            <path class="cold-arrow" d="M542 300 l-20 26 h13 v34 h15 v-34 h12z"/>
+            <path class="cold-arrow" d="M542 410 l-20 26 h13 v34 h15 v-34 h12z"/>
+          </g>
+
+          <!-- Structural ribs -->
+          <g stroke="#708078" stroke-opacity=".45" stroke-width="3"><line x1="315" y1="150" x2="315" y2="540"/><line x1="485" y1="150" x2="485" y2="540"/></g>
+
+          <!-- Fan and furnace -->
+          <rect x="105" y="515" width="92" height="91" rx="8" fill="#27342e" stroke="#718178" stroke-width="3"/>
+          <rect x="121" y="538" width="60" height="50" rx="6" fill="#2d1309" stroke="#74513b"/><path d="M149 580 C128 565 145 554 142 542 C159 550 164 560 156 568 C171 562 174 576 158 584 Z" fill="#ff7a23" filter="url(#glow)"/>
+          <path d="M188 540 C190 490 208 480 236 480" fill="none" stroke="#65746d" stroke-width="26"/><path d="M188 540 C190 490 208 480 236 480" fill="none" stroke="#26342e" stroke-width="18"/>
+          <circle cx="242" cy="482" r="44" fill="#26342e" stroke="#718178" stroke-width="4"/><circle cx="242" cy="482" r="29" fill="none" stroke="#839189" stroke-width="3"/><circle cx="242" cy="482" r="7" fill="#84928a"/><g stroke="#84928a" stroke-width="4"><line x1="242" y1="453" x2="242" y2="511"/><line x1="213" y1="482" x2="271" y2="482"/><line x1="221" y1="461" x2="263" y2="503"/><line x1="263" y1="461" x2="221" y2="503"/></g>
+
+          <!-- legs & discharge -->
+          <g stroke="#586860" stroke-width="8"><line x1="325" y1="590" x2="310" y2="660"/><line x1="475" y1="590" x2="490" y2="660"/></g>
+          <path d="M365 590 L435 590 L420 632 L380 632 Z" fill="#28382f" stroke="#6a7a72" stroke-width="3"/>
+          <rect x="373" y="632" width="54" height="19" rx="5" fill="#495950"/>
+          <path d="M400 620 v35 h13 l-18 25 -18-25 h13 v-35z" fill="#ffc43d" opacity=".8" filter="url(#glow)"/>
+
+          <!-- Sensor points at real positions -->
+          <circle id="svgDhtPoint" cx="287" cy="320" r="8" fill="#07110c" stroke="#9cdf4b" stroke-width="4"/>
+          <circle id="svgPtPoint" cx="465" cy="535" r="8" fill="#07110c" stroke="#c06cff" stroke-width="4"/>
+          <circle id="svgHydPoint" cx="465" cy="574" r="8" fill="#07110c" stroke="#3bd7e7" stroke-width="4"/>
+        </svg>
+
+        <div class="sensor-callout dht">
+          <div class="sc-title">DHT22</div><div class="sc-desc">Temp. y Humedad Ambiente</div>
+          <div class="sc-value" id="callDhtTemp">-- °C</div><div class="sc-sub" id="callDhtHum">-- % HR</div>
         </div>
+        <div class="sensor-callout pt">
+          <div class="sc-title">PT100</div><div class="sc-desc">Temperatura del arroz</div>
+          <div class="sc-value" id="callPtTemp">-- °C</div><div class="sc-sub" id="callPtState">OFFLINE</div>
+        </div>
+        <div class="sensor-callout hyd">
+          <div class="sc-title">HYDRONIX</div><div class="sc-desc">Humedad del arroz · Modo E</div>
+          <div class="sc-value" id="callHydMode">--</div><div class="sc-sub" id="callHydState">OFFLINE</div>
+        </div>
+      </div>
+    </div>
 
-    </section>
+    <!-- RIGHT -->
+    <div class="right-column">
+      <div class="panel">
+        <h2 class="panel-title">Indicadores clave</h2>
+        <div class="availability">
+          <div class="gauge" id="availabilityGauge" style="--gauge:0%"><div class="gauge-inner"><b id="availabilityPct">0%</b><span>Disponibilidad</span></div></div>
+          <div class="kpi-list">
+            <div class="kpi-line"><span>Sensores Pico</span><b id="picoOnline">0 / 6</b></div>
+            <div class="kpi-line"><span>Hydronix</span><b id="hydOnline">0 / 3</b></div>
+            <div class="kpi-line"><span>Temp. arroz prom.</span><b id="avgRice">-- °C</b></div>
+            <div class="kpi-line"><span>Alarmas activas</span><b id="activeAlarms">0</b></div>
+          </div>
+        </div>
+        <div class="system-ok" id="systemState">ESPERANDO DATOS DEL SISTEMA</div>
+      </div>
 
+      <div class="panel">
+        <h2 class="panel-title">Estado de sensores · <span id="statusTowerName">Torre 1</span></h2>
+        <div class="sensor-status-grid">
+          <div class="sensor-tile"><div class="st-label">PT100 / MAX31865</div><div class="st-value status-offline" id="statusPt">OFFLINE</div><div class="st-sub" id="statusPtSub">Sin lectura</div></div>
+          <div class="sensor-tile"><div class="st-label">DHT22</div><div class="st-value status-offline" id="statusDht">OFFLINE</div><div class="st-sub" id="statusDhtSub">Sin lectura</div></div>
+          <div class="sensor-tile"><div class="st-label">Hydronix</div><div class="st-value status-offline" id="statusHyd">OFFLINE</div><div class="st-sub" id="statusHydSub">Modo E: --</div></div>
+          <div class="sensor-tile"><div class="st-label">Última telemetría</div><div class="st-value status-wait" id="lastUpdate">SIN DATOS</div><div class="st-sub">Nodo Pico W seleccionado</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cards-section" id="towerCards"></section>
+
+  <section class="panel trend-panel" id="trendPanel">
+    <div class="trend-head"><div><h3>Tendencia de temperatura del arroz</h3><small>Historial temporal de esta sesión del navegador · máximo 120 lecturas por torre.</small></div><button class="close-btn" onclick="toggleTendencias(false)">✕</button></div>
+    <div class="canvas-wrap"><canvas id="trendCanvas"></canvas></div>
+  </section>
 </main>
 
-
-<footer>
-    SISMAR · 3 Nodos Pico W Independientes · PT100/MAX31865 · DHT22 · Hydronix · MQTT
-</footer>
-
+<nav class="bottom-nav">
+  <button class="nav-btn active" id="navVista" onclick="mostrarVista()">▰ VISTA OPERATIVA</button>
+  <button class="nav-btn" id="navTrend" onclick="toggleTendencias(true)">⌁ TENDENCIAS</button>
+  <button class="nav-btn" onclick="abrirAlarmas()">⚠ ALARMAS</button>
+  <button class="nav-btn" onclick="abrirAlarmas()">⚙ CONFIGURACIÓN</button>
+</nav>
 
 <script>
-const BROKER =
-    "wss://165a1839496b496da003fd2a5f5f10cd.s1.eu.hivemq.cloud:8884/mqtt";
+const BROKER = "wss://165a1839496b496da003fd2a5f5f10cd.s1.eu.hivemq.cloud:8884/mqtt";
+const MQTT_USER = "dashboard_sismar";
 
-const MQTT_USER =
-    "dashboard_sismar";
-
-const TOPIC_TELEMETRIA_NODOS =
-    "sismar/secador01/+/telemetria";
-
-const TOPIC_ESTADO_NODOS =
-    "sismar/secador01/+/estado";
-
-const TOPIC_ALARMAS_STATE_NODOS =
-    "sismar/secador01/+/config/alarmas/state";
-
-const TOPIC_HYDRONIX =
-    "sismar/secador01/hydronix/telemetria";
-
-function topicAlarmasSet(
-    torreId
-) {
-    return (
-        "sismar/secador01/"
-        +
-        torreId
-        +
-        "/config/alarmas/set"
-    );
-}
-
+const TOPIC_TELEMETRIA_NODOS = "sismar/secador01/+/telemetria";
+const TOPIC_ESTADO_NODOS = "sismar/secador01/+/estado";
+const TOPIC_ALARMAS_STATE_NODOS = "sismar/secador01/+/config/alarmas/state";
+const TOPIC_HYDRONIX = "sismar/secador01/hydronix/telemetria";
+const TOPIC_HYDRONIX_ESTADO = "sismar/secador01/hydronix/estado";
 
 const TORRES = [
-    {
-        id: "torre01",
-        nombre: "TORRE 1",
-        pt100: "PT100-01",
-        dht: "DHT22-01",
-        maxCs: "GP17",
-        dhtPin: "GP22"
-    },
-    {
-        id: "torre02",
-        nombre: "TORRE 2",
-        pt100: "PT100-02",
-        dht: "DHT22-02",
-        maxCs: "GP17",
-        dhtPin: "GP22"
-    },
-    {
-        id: "torre03",
-        nombre: "TORRE 3",
-        pt100: "PT100-03",
-        dht: "DHT22-03",
-        maxCs: "GP17",
-        dhtPin: "GP22"
-    }
+  {id:"torre01",nombre:"TORRE 1"},
+  {id:"torre02",nombre:"TORRE 2"},
+  {id:"torre03",nombre:"TORRE 3"}
 ];
 
-
 let client = null;
+let selectedTower = "torre01";
+let hydronixBridgeState = "offline";
+let lastHydronixTelemetry = 0;
 
-
-const historial = {
-    torre01: [],
-    torre02: [],
-    torre03: []
-};
-
-
-const ultimaLectura = {
-    torre01: null,
-    torre02: null,
-    torre03: null
-};
-
-
-const datosTorresCache = {
-    torre01: null,
-    torre02: null,
-    torre03: null
-};
-
-
-const ultimaRecepcionNodo = {
-    torre01: 0,
-    torre02: 0,
-    torre03: 0
-};
-
-
-const estadoNodoCache = {
-    torre01: null,
-    torre02: null,
-    torre03: null
-};
-
-
-const estadoHydronix = {
-    torre01: null,
-    torre02: null,
-    torre03: null
-};
-
-
+const nodeState = {torre01:"offline",torre02:"offline",torre03:"offline"};
+const nodeData = {torre01:null,torre02:null,torre03:null};
+const lastNodeTelemetry = {torre01:0,torre02:0,torre03:0};
+const hydData = {torre01:null,torre02:null,torre03:null};
+const history = {torre01:[],torre02:[],torre03:[]};
 let configAlarmas = {
-    torre01: {
-        arroz_min: null,
-        arroz_max: null,
-        ambiente_min: null,
-        ambiente_max: null
-    },
-    torre02: {
-        arroz_min: null,
-        arroz_max: null,
-        ambiente_min: null,
-        ambiente_max: null
-    },
-    torre03: {
-        arroz_min: null,
-        arroz_max: null,
-        ambiente_min: null,
-        ambiente_max: null
-    }
+  torre01:{arroz_min:null,arroz_max:null,ambiente_min:null,ambiente_max:null},
+  torre02:{arroz_min:null,arroz_max:null,ambiente_min:null,ambiente_max:null},
+  torre03:{arroz_min:null,arroz_max:null,ambiente_min:null,ambiente_max:null}
 };
 
+function topicAlarmasSet(id){return `sismar/secador01/${id}/config/alarmas/set`;}
+function num(v,d=1){return v===null||v===undefined||Number.isNaN(Number(v))?null:Number(v).toFixed(d);}
+function torreById(id){return TORRES.find(t=>t.id===id);}
+function isAlarm(a){return !!a && (a.estado==="alta"||a.estado==="baja");}
 
-function crearTorres() {
-
-    const contenedor =
-        document.getElementById(
-            "torresGrid"
-        );
-
-    contenedor.innerHTML =
-        TORRES.map(
-            function(torre) {
-
-                return `
-                <div class="torre" id="card-${torre.id}">
-
-                    <div class="torre-header">
-                        <div>
-                            <div class="torre-titulo">
-                                ${torre.nombre}
-                            </div>
-
-                            <div class="sensor-nombre">
-                                ${torre.pt100} · ${torre.dht}
-                            </div>
-                        </div>
-
-                        <div class="badges">
-                            <div
-                                class="badge badge-offline"
-                                id="badge-pt100-${torre.id}"
-                            >
-                                PT100 OFFLINE
-                            </div>
-
-                            <div
-                                class="badge badge-espera"
-                                id="badge-dht-${torre.id}"
-                            >
-                                DHT22 PENDIENTE
-                            </div>
-                        </div>
-                    </div>
-
-
-                    <div class="metric-principal">
-                        <div class="metric-label">
-                            Temperatura del arroz
-                        </div>
-
-                        <div
-                            class="metric-numero"
-                            id="arroz-${torre.id}"
-                        >
-                            --<span class="metric-unidad"> °C</span>
-                        </div>
-
-                        <div class="mini-source">
-                            PT100 + MAX31865 · ${torre.maxCs}
-                        </div>
-                    </div>
-
-
-                    <div class="metricas-secundarias">
-
-                        <div class="mini-metric">
-                            <div class="mini-label">
-                                Temperatura ambiente
-                            </div>
-
-                            <div
-                                class="mini-value"
-                                id="amb-temp-${torre.id}"
-                            >
-                                -- °C
-                            </div>
-
-                            <div class="mini-source">
-                                DHT22 · ${torre.dhtPin}
-                            </div>
-                        </div>
-
-
-                        <div class="mini-metric">
-                            <div class="mini-label">
-                                Humedad ambiente
-                            </div>
-
-                            <div
-                                class="mini-value"
-                                id="amb-hum-${torre.id}"
-                            >
-                                -- %
-                            </div>
-
-                            <div class="mini-source">
-                                DHT22 · HR
-                            </div>
-                        </div>
-
-                    </div>
-
-
-                    <div class="hydronix-box">
-
-                        <div class="hydronix-head">
-                            <div class="hydronix-title">
-                                Humedad del arroz · Modo E
-                            </div>
-
-                            <div
-                                class="badge badge-espera"
-                                id="badge-hydronix-${torre.id}"
-                            >
-                                ESPERANDO
-                            </div>
-                        </div>
-
-                        <div
-                            class="hydronix-value"
-                            id="hydronix-${torre.id}"
-                        >
-                            -- %
-                        </div>
-
-                        <div class="fila" style="margin-top:12px">
-                            <span>Humedad filtrada E</span>
-                            <strong id="hydronix-filtrada-e-${torre.id}">--</strong>
-                        </div>
-
-                        <div class="fila">
-                            <span>Temp. material</span>
-                            <strong id="hydronix-temp-${torre.id}">--</strong>
-                        </div>
-
-                        <div class="mini-source">
-                            Hydronix Hydro-Mix XT · RS485 / Modbus
-                        </div>
-
-                    </div>
-
-
-                    <div class="alarmas-torre">
-
-                        <div class="alarma-linea">
-                            <span>
-                                Alarma temperatura arroz
-                            </span>
-
-                            <strong
-                                id="alarma-arroz-${torre.id}"
-                            >
-                                SIN CONFIGURAR
-                            </strong>
-                        </div>
-
-                        <div class="alarma-linea">
-                            <span>
-                                Límites arroz
-                            </span>
-
-                            <strong
-                                class="limites"
-                                id="limites-arroz-${torre.id}"
-                            >
-                                -- / -- °C
-                            </strong>
-                        </div>
-
-                        <div class="alarma-linea">
-                            <span>
-                                Alarma temperatura ambiente
-                            </span>
-
-                            <strong
-                                id="alarma-amb-${torre.id}"
-                            >
-                                SIN CONFIGURAR
-                            </strong>
-                        </div>
-
-                        <div class="alarma-linea">
-                            <span>
-                                Límites ambiente
-                            </span>
-
-                            <strong
-                                class="limites"
-                                id="limites-amb-${torre.id}"
-                            >
-                                -- / -- °C
-                            </strong>
-                        </div>
-
-                    </div>
-
-
-                    <div class="datos">
-
-                        <div class="fila">
-                            <span>Resistencia PT100</span>
-                            <strong id="res-${torre.id}">--</strong>
-                        </div>
-
-                        <div class="fila">
-                            <span>MAX31865 / Fault</span>
-                            <strong id="max-${torre.id}">--</strong>
-                        </div>
-
-                        <div class="fila">
-                            <span>Configuración PT100</span>
-                            <strong id="hilos-${torre.id}">3 hilos</strong>
-                        </div>
-
-                        <div class="fila">
-                            <span>Última lectura</span>
-                            <strong id="ultima-${torre.id}">--</strong>
-                        </div>
-
-                    </div>
-
-                </div>
-                `;
-            }
-        )
-        .join("");
+function construirAlarmGrid(){
+  document.getElementById("alarmGrid").innerHTML = TORRES.map(t=>`
+    <div class="alarm-tower">
+      <h3>${t.nombre}</h3>
+      <div class="alarm-group"><div class="alarm-group-title">Temperatura del arroz</div><div class="input-pair">
+        <div class="field"><label>Baja °C</label><input id="cfg-${t.id}-arroz-min" type="number" step="0.1" placeholder="Sin límite"></div>
+        <div class="field"><label>Alta °C</label><input id="cfg-${t.id}-arroz-max" type="number" step="0.1" placeholder="Sin límite"></div>
+      </div></div>
+      <div class="alarm-group"><div class="alarm-group-title">Temperatura ambiente</div><div class="input-pair">
+        <div class="field"><label>Baja °C</label><input id="cfg-${t.id}-amb-min" type="number" step="0.1" placeholder="Sin límite"></div>
+        <div class="field"><label>Alta °C</label><input id="cfg-${t.id}-amb-max" type="number" step="0.1" placeholder="Sin límite"></div>
+      </div></div>
+    </div>`).join("");
 }
 
+function conectar(){
+  const password=document.getElementById("mqttPassword").value;
+  const err=document.getElementById("loginError");
+  if(!password){err.textContent="Ingresa la contraseña MQTT.";return;}
+  err.textContent="Conectando...";
+  const clientId="sismar-oficial-"+Date.now().toString(36)+"-"+Math.random().toString(16).slice(2,8);
+  client=mqtt.connect(BROKER,{clientId,username:MQTT_USER,password,clean:true,reconnectPeriod:3000,connectTimeout:10000});
 
-function crearFormularioAlarmas() {
-
-    const grid =
-        document.getElementById(
-            "configGrid"
-        );
-
-    grid.innerHTML =
-        TORRES.map(
-            function(torre) {
-
-                return `
-                <div class="config-torre">
-
-                    <h3>${torre.nombre}</h3>
-
-                    <div class="config-seccion">
-                        <div class="config-seccion-title">
-                            Temperatura del arroz
-                        </div>
-
-                        <div class="campos">
-                            <div class="campo">
-                                <label>Baja °C</label>
-
-                                <input
-                                    id="cfg-${torre.id}-arroz-min"
-                                    type="number"
-                                    step="0.1"
-                                    placeholder="Sin límite"
-                                >
-                            </div>
-
-                            <div class="campo">
-                                <label>Alta °C</label>
-
-                                <input
-                                    id="cfg-${torre.id}-arroz-max"
-                                    type="number"
-                                    step="0.1"
-                                    placeholder="Sin límite"
-                                >
-                            </div>
-                        </div>
-                    </div>
-
-
-                    <div class="config-seccion">
-                        <div class="config-seccion-title">
-                            Temperatura ambiente
-                        </div>
-
-                        <div class="campos">
-                            <div class="campo">
-                                <label>Baja °C</label>
-
-                                <input
-                                    id="cfg-${torre.id}-amb-min"
-                                    type="number"
-                                    step="0.1"
-                                    placeholder="Sin límite"
-                                >
-                            </div>
-
-                            <div class="campo">
-                                <label>Alta °C</label>
-
-                                <input
-                                    id="cfg-${torre.id}-amb-max"
-                                    type="number"
-                                    step="0.1"
-                                    placeholder="Sin límite"
-                                >
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-                `;
-            }
-        )
-        .join("");
+  client.on("connect",()=>{
+    document.getElementById("loginOverlay").classList.add("hidden");
+    setConnection(true);
+    client.subscribe(TOPIC_TELEMETRIA_NODOS);
+    client.subscribe(TOPIC_ESTADO_NODOS);
+    client.subscribe(TOPIC_ALARMAS_STATE_NODOS);
+    client.subscribe(TOPIC_HYDRONIX);
+    client.subscribe(TOPIC_HYDRONIX_ESTADO);
+  });
+  client.on("close",()=>{setConnection(false);});
+  client.on("offline",()=>{setConnection(false);});
+  client.on("error",e=>{console.error(e);err.textContent="No fue posible conectar. Revisa usuario, contraseña y permisos.";});
+  client.on("message",procesarMensaje);
 }
 
-
-function conectar() {
-
-    const password =
-        document
-        .getElementById(
-            "mqttPassword"
-        )
-        .value;
-
-    if (!password) {
-
-        document
-        .getElementById(
-            "loginError"
-        )
-        .innerText =
-            "Ingresa la contraseña.";
-
-        return;
-    }
-
-    document
-    .getElementById(
-        "loginError"
-    )
-    .innerText =
-        "Conectando...";
-
-
-    const clientId =
-        "sismar-web-"
-        +
-        Date.now().toString(36)
-        +
-        "-"
-        +
-        Math.random()
-        .toString(16)
-        .substring(2,8);
-
-
-    client =
-        mqtt.connect(
-            BROKER,
-            {
-                clientId: clientId,
-                username: MQTT_USER,
-                password: password,
-                clean: true,
-                reconnectPeriod: 3000,
-                connectTimeout: 10000
-            }
-        );
-
-
-    client.on(
-        "connect",
-        function() {
-
-            document
-            .getElementById(
-                "loginOverlay"
-            )
-            .classList.add(
-                "oculto"
-            );
-
-            cambiarConexion(true);
-
-            // Inicio limpio: ninguna torre se considera online hasta
-            // recibir su estado/telemetria del nodo distribuido.
-            TORRES.forEach(
-                function(torre) {
-                    datosTorresCache[torre.id] = null;
-                    ultimaRecepcionNodo[torre.id] = 0;
-                    estadoNodoCache[torre.id] = null;
-                    marcarTorreOffline(torre.id);
-                }
-            );
-
-            actualizarResumenDistribuido();
-
-            client.subscribe(
-                TOPIC_TELEMETRIA_NODOS
-            );
-
-            client.subscribe(
-                TOPIC_ESTADO_NODOS
-            );
-
-            client.subscribe(
-                TOPIC_ALARMAS_STATE_NODOS
-            );
-
-            client.subscribe(
-                TOPIC_HYDRONIX
-            );
-
-        }
-    );
-
-
-    client.on(
-        "close",
-        function() {
-            cambiarConexion(false);
-            marcarTodoOffline();
-            actualizarResumenDistribuido();
-        }
-    );
-
-
-    client.on(
-        "offline",
-        function() {
-            cambiarConexion(false);
-            marcarTodoOffline();
-            actualizarResumenDistribuido();
-        }
-    );
-
-
-    client.on(
-        "error",
-        function(error) {
-
-            console.error(error);
-
-            document
-            .getElementById(
-                "loginError"
-            )
-            .innerText =
-                "No fue posible conectar.";
-        }
-    );
-
-
-    client.on(
-        "message",
-        function(
-            topic,
-            message
-        ) {
-
-            const texto =
-                message.toString();
-
-            if (
-                topic ===
-                TOPIC_HYDRONIX
-            ) {
-                procesarHydronix(
-                    texto
-                );
-
-                return;
-            }
-
-
-            const partes =
-                topic.split("/");
-
-
-            if (
-                partes.length < 4
-                ||
-                partes[0] !== "sismar"
-                ||
-                partes[1] !== "secador01"
-            ) {
-                return;
-            }
-
-
-            const torreId =
-                partes[2];
-
-
-            if (
-                !TORRES.some(
-                    function(torre) {
-                        return torre.id === torreId;
-                    }
-                )
-            ) {
-                return;
-            }
-
-
-            if (
-                partes.length === 4
-                &&
-                partes[3] === "telemetria"
-            ) {
-                procesarTelemetriaNodo(
-                    torreId,
-                    texto
-                );
-
-                return;
-            }
-
-
-            if (
-                partes.length === 4
-                &&
-                partes[3] === "estado"
-            ) {
-                procesarEstadoNodo(
-                    torreId,
-                    texto
-                );
-
-                return;
-            }
-
-
-            if (
-                partes.length === 6
-                &&
-                partes[3] === "config"
-                &&
-                partes[4] === "alarmas"
-                &&
-                partes[5] === "state"
-            ) {
-                procesarAlarmasStateNodo(
-                    torreId,
-                    texto
-                );
-            }
-        }
-    );
+function setConnection(ok){
+  document.getElementById("connectionDot").classList.toggle("online",ok);
+  document.getElementById("connectionText").textContent=ok?"Conectado":"Desconectado";
 }
 
-
-function cambiarConexion(
-    online
-) {
-
-    const punto =
-        document
-        .getElementById(
-            "puntoConexion"
-        );
-
-    const texto =
-        document
-        .getElementById(
-            "textoConexion"
-        );
-
-    if (online) {
-        punto.classList.add(
-            "online"
-        );
-
-        texto.innerText =
-            "Conectado";
+function procesarMensaje(topic,message){
+  const text=message.toString();
+  if(topic===TOPIC_HYDRONIX){procesarHydronix(text);return;}
+  if(topic===TOPIC_HYDRONIX_ESTADO){
+    hydronixBridgeState=text.trim().toLowerCase();
+    if(hydronixBridgeState!=="online"){
+      TORRES.forEach(t=>hydData[t.id]=null);
+      lastHydronixTelemetry=0;
     }
+    renderAll();return;
+  }
+  const parts=topic.split("/");
+  if(parts.length<4||parts[0]!=="sismar"||parts[1]!=="secador01")return;
+  const id=parts[2];
+  if(!torreById(id))return;
 
-    else {
-        punto.classList.remove(
-            "online"
-        );
-
-        texto.innerText =
-            "Desconectado";
-    }
+  if(parts[3]==="telemetria")procesarNodo(id,text);
+  else if(parts[3]==="estado")procesarEstadoNodo(id,text);
+  else if(parts[3]==="config"&&parts[4]==="alarmas"&&parts[5]==="state")procesarAlarmState(id,text);
 }
 
-
-function procesarTelemetriaNodo(
-    torreId,
-    texto
-) {
-
-    try {
-
-        const datos =
-            JSON.parse(
-                texto
-            );
-
-        const lectura =
-            datos.torre
-            ||
-            (
-                datos.torres
-                &&
-                datos.torres[torreId]
-            );
-
-        if (!lectura) {
-            return;
-        }
-
-        // Si el broker ya indico que este nodo esta OFFLINE,
-        // no revivimos la torre con una telemetria retenida antigua.
-        if (
-            estadoNodoCache[torreId]
-            ===
-            "offline"
-        ) {
-            return;
-        }
-
-        datosTorresCache[torreId] =
-            lectura;
-
-        ultimaRecepcionNodo[torreId] =
-            Date.now();
-
-        actualizarTorre(
-            torreId,
-            lectura
-        );
-
-        actualizarResumenDistribuido();
-        dibujarGrafica();
-    }
-
-    catch(error) {
-        console.error(
-            "Error JSON nodo " + torreId + ":",
-            error
-        );
-    }
+function procesarEstadoNodo(id,text){
+  nodeState[id]=String(text||"").trim().toLowerCase();
+  if(nodeState[id]!=="online"){
+    nodeData[id]=null;lastNodeTelemetry[id]=0;
+  }
+  renderAll();
 }
 
-
-function procesarTelemetriaLegacy(
-    texto
-) {
-
-    try {
-
-        const datos =
-            JSON.parse(
-                texto
-            );
-
-        if (!datos.torres) {
-            return;
-        }
-
-        TORRES.forEach(
-            function(torre) {
-
-                // Si este nodo distribuido reporto en los ultimos
-                // 10 segundos, tiene prioridad sobre la Pico central.
-                const nodoReciente =
-                    (
-                        Date.now()
-                        -
-                        ultimaRecepcionNodo[torre.id]
-                    )
-                    <
-                    10000;
-
-                if (
-                    nodoReciente
-                    ||
-                    !datos.torres[torre.id]
-                ) {
-                    return;
-                }
-
-                datosTorresCache[torre.id] =
-                    datos.torres[torre.id];
-
-                actualizarTorre(
-                    torre.id,
-                    datos.torres[torre.id]
-                );
-            }
-        );
-
-        actualizarResumenDistribuido();
-        dibujarGrafica();
+function procesarNodo(id,text){
+  try{
+    const payload=JSON.parse(text);
+    const d=payload.torre||(payload.torres&&payload.torres[id]);
+    if(!d)return;
+    if(nodeState[id]==="offline")return;
+    nodeData[id]=d;lastNodeTelemetry[id]=Date.now();
+    if(d.estado==="online"&&d.temperatura!==null&&d.temperatura!==undefined){
+      history[id].push(Number(d.temperatura));
+      if(history[id].length>120)history[id].shift();
     }
-
-    catch(error) {
-        console.error(
-            "Error JSON telemetria legacy:",
-            error
-        );
-    }
+    renderAll();drawTrend();
+  }catch(e){console.error("Telemetría inválida",id,e);}
 }
 
-
-function procesarEstadoNodo(
-    torreId,
-    texto
-) {
-
-    const estado =
-        String(
-            texto
-            ||
-            ""
-        )
-        .trim()
-        .toLowerCase();
-
-    estadoNodoCache[torreId] =
-        estado;
-
-
-    if (
-        estado
-        ===
-        "offline"
-    ) {
-
-        datosTorresCache[torreId] = null;
-        ultimaRecepcionNodo[torreId] = 0;
-
-        marcarTorreOffline(
-            torreId
-        );
-
-        actualizarResumenDistribuido();
-
-        return;
-    }
-
-
-    // Si llega ONLINE no inventamos lecturas.
-    // Esperamos el siguiente mensaje real de telemetria.
-}
-function actualizarTorre(
-    id,
-    datos
-) {
-
-    if (!datos) {
-        return;
-    }
-
-    const badgePt100 =
-        document.getElementById(
-            "badge-pt100-" + id
-        );
-
-    const badgeDht =
-        document.getElementById(
-            "badge-dht-" + id
-        );
-
-    const card =
-        document.getElementById(
-            "card-" + id
-        );
-
-    // ========================================================
-    // PT100
-    // ========================================================
-
-    if (
-        datos.estado
-        ===
-        "online"
-    ) {
-
-        badgePt100.innerText =
-            "PT100 ONLINE";
-
-        badgePt100.className =
-            "badge badge-online";
-
-        document
-        .getElementById(
-            "arroz-" + id
-        )
-        .innerHTML =
-            Number(
-                datos.temperatura
-            )
-            .toFixed(2)
-            +
-            '<span class="metric-unidad"> °C</span>';
-
-
-        document
-        .getElementById(
-            "res-" + id
-        )
-        .innerText =
-            Number(
-                datos.resistencia
-            )
-            .toFixed(2)
-            +
-            " Ω";
-
-
-        document
-        .getElementById(
-            "max-" + id
-        )
-        .innerText =
-            datos.fault
-            ||
-            "0x00";
-
-
-        ultimaLectura[id] =
-            new Date();
-
-
-        historial[id].push(
-            Number(
-                datos.temperatura
-            )
-        );
-
-
-        if (
-            historial[id].length
-            >
-            60
-        ) {
-            historial[id].shift();
-        }
-    }
-
-    else if (
-        datos.estado
-        ===
-        "hardware_no_disponible"
-    ) {
-
-        badgePt100.innerText =
-            "MAX NO DETECTADO";
-
-        badgePt100.className =
-            "badge badge-espera";
-
-        document
-        .getElementById(
-            "arroz-" + id
-        )
-        .innerHTML =
-            '--<span class="metric-unidad"> °C</span>';
-
-        document
-        .getElementById(
-            "res-" + id
-        )
-        .innerText =
-            "--";
-
-        document
-        .getElementById(
-            "max-" + id
-        )
-        .innerText =
-            "NO DETECTADO";
-    }
-
-    else {
-
-        badgePt100.innerText =
-            "PT100 ERROR";
-
-        badgePt100.className =
-            "badge badge-offline";
-
-        document
-        .getElementById(
-            "arroz-" + id
-        )
-        .innerHTML =
-            '--<span class="metric-unidad"> °C</span>';
-
-        document
-        .getElementById(
-            "res-" + id
-        )
-        .innerText =
-            "--";
-
-        document
-        .getElementById(
-            "max-" + id
-        )
-        .innerText =
-            datos.fault
-            ||
-            "ERROR";
-    }
-
-
-    document
-    .getElementById(
-        "hilos-" + id
-    )
-    .innerText =
-        datos.hilos
-        ?
-        datos.hilos + " hilos"
-        :
-        "--";
-
-
-    // ========================================================
-    // DHT22
-    // ========================================================
-
-    const ambiente =
-        datos.ambiente
-        ||
-        null;
-
-
-    if (
-        ambiente
-        &&
-        ambiente.estado
-        ===
-        "online"
-    ) {
-
-        badgeDht.innerText =
-            "DHT22 ONLINE";
-
-        badgeDht.className =
-            "badge badge-online";
-
-        document
-        .getElementById(
-            "amb-temp-" + id
-        )
-        .innerText =
-            Number(
-                ambiente.temperatura
-            )
-            .toFixed(1)
-            +
-            " °C";
-
-        document
-        .getElementById(
-            "amb-hum-" + id
-        )
-        .innerText =
-            Number(
-                ambiente.humedad
-            )
-            .toFixed(1)
-            +
-            " %";
-    }
-
-    else {
-
-        badgeDht.innerText =
-            ambiente
-            ?
-            "DHT22 OFFLINE"
-            :
-            "DHT22 PENDIENTE";
-
-        badgeDht.className =
-            ambiente
-            ?
-            "badge badge-offline"
-            :
-            "badge badge-espera";
-
-        document
-        .getElementById(
-            "amb-temp-" + id
-        )
-        .innerText =
-            "-- °C";
-
-        document
-        .getElementById(
-            "amb-hum-" + id
-        )
-        .innerText =
-            "-- %";
-    }
-
-
-    // ========================================================
-    // ALARMAS
-    // ========================================================
-
-    const alarmas =
-        datos.alarmas
-        ||
-        null;
-
-    let torreEnAlarma =
-        false;
-
-    if (alarmas) {
-
-        pintarAlarma(
-            id,
-            "arroz",
-            alarmas.arroz
-        );
-
-        pintarAlarma(
-            id,
-            "amb",
-            alarmas.ambiente
-        );
-
-        if (
-            esAlarmaActiva(
-                alarmas.arroz
-            )
-            ||
-            esAlarmaActiva(
-                alarmas.ambiente
-            )
-        ) {
-            torreEnAlarma = true;
-        }
-    }
-
-
-    card.classList.toggle(
-        "torre-alerta",
-        torreEnAlarma
-    );
-
-
-    document
-    .getElementById(
-        "arroz-" + id
-    )
-    .classList.toggle(
-        "alerta",
-        alarmas
-        &&
-        esAlarmaActiva(
-            alarmas.arroz
-        )
-    );
-
-
-    // Actualizar Hydronix si ya llego por su topic.
-    actualizarHydronixVisual(
-        id
-    );
+function procesarHydronix(text){
+  try{
+    const payload=JSON.parse(text);const torres=payload.torres||payload;
+    TORRES.forEach(t=>{if(torres[t.id])hydData[t.id]=torres[t.id];});
+    lastHydronixTelemetry=Date.now();
+    renderAll();
+  }catch(e){console.error("Hydronix JSON inválido",e);}
 }
 
-
-function pintarAlarma(
-    id,
-    tipo,
-    alarma
-) {
-
-    if (!alarma) {
-        return;
-    }
-
-    const estadoId =
-        tipo === "arroz"
-        ?
-        "alarma-arroz-" + id
-        :
-        "alarma-amb-" + id;
-
-    const limitesId =
-        tipo === "arroz"
-        ?
-        "limites-arroz-" + id
-        :
-        "limites-amb-" + id;
-
-
-    const estado =
-        String(
-            alarma.estado
-            ||
-            "sin_configurar"
-        );
-
-
-    const textos = {
-        normal: "NORMAL",
-        baja: "TEMPERATURA BAJA",
-        alta: "TEMPERATURA ALTA",
-        sin_dato: "SIN DATO",
-        sin_configurar: "SIN CONFIGURAR"
-    };
-
-
-    const elemento =
-        document.getElementById(
-            estadoId
-        );
-
-
-    elemento.innerText =
-        textos[estado]
-        ||
-        estado.toUpperCase();
-
-
-    if (
-        estado === "baja"
-        ||
-        estado === "alta"
-    ) {
-        elemento.style.color =
-            "var(--rojo)";
-    }
-
-    else if (
-        estado === "normal"
-    ) {
-        elemento.style.color =
-            "var(--verde)";
-    }
-
-    else {
-        elemento.style.color =
-            "var(--amarillo)";
-    }
-
-
-    document
-    .getElementById(
-        limitesId
-    )
-    .innerText =
-        formatearLimite(
-            alarma.min
-        )
-        +
-        " / "
-        +
-        formatearLimite(
-            alarma.max
-        )
-        +
-        " °C";
+function procesarAlarmState(id,text){
+  try{
+    const p=JSON.parse(text);
+    if(p.alarmas){configAlarmas[id]=p.alarmas;cargarInputsAlarmas();mostrarConfig(`Configuración confirmada por ${torreById(id).nombre}.`,true);}
+  }catch(e){console.error("Alarm state inválido",e);}
 }
 
+function getPtOnline(id){const d=nodeData[id];return nodeState[id]==="online"&&d&&d.estado==="online"&&d.temperatura!==null&&d.temperatura!==undefined;}
+function getDhtOnline(id){const d=nodeData[id],a=d&&d.ambiente;return nodeState[id]==="online"&&a&&a.estado==="online"&&a.temperatura!==null&&a.temperatura!==undefined;}
+function getHydOnline(id){const h=hydData[id];return hydronixBridgeState==="online"&&h&&h.estado==="online"&&(h.modo_e!==null&&h.modo_e!==undefined||h.humedad_arroz!==null&&h.humedad_arroz!==undefined);}
+function getModeE(id){const h=hydData[id];if(!h)return null;return h.modo_e??h.humedad_arroz??null;}
+function getHydMatTemp(id){const h=hydData[id];return h?h.temperatura_material??null:null;}
 
-function formatearLimite(
-    valor
-) {
-    return (
-        valor === null
-        ||
-        valor === undefined
-    )
-    ?
-    "--"
-    :
-    Number(
-        valor
-    )
-    .toFixed(1);
+function seleccionarTorre(id){selectedTower=id;renderAll();}
+
+function renderAll(){
+  renderSelected();renderCards();renderGlobal();
 }
 
+function renderSelected(){
+  const t=torreById(selectedTower),d=nodeData[selectedTower],a=d&&d.ambiente,h=hydData[selectedTower];
+  const ptOk=getPtOnline(selectedTower),dhtOk=getDhtOnline(selectedTower),hydOk=getHydOnline(selectedTower);
+  const rice=ptOk?Number(d.temperatura):null;
+  const ambT=dhtOk?Number(a.temperatura):null;
+  const ambH=dhtOk&&a.humedad!==null&&a.humedad!==undefined?Number(a.humedad):null;
+  const mode=getModeE(selectedTower);
 
-function esAlarmaActiva(
-    alarma
-) {
-    if (!alarma) {
-        return false;
-    }
+  document.getElementById("selectedTowerLabel").textContent=t.nombre;
+  document.getElementById("leftTowerName").textContent=t.nombre;
+  document.getElementById("statusTowerName").textContent=t.nombre;
+  TORRES.forEach(x=>document.getElementById("select-"+x.id).classList.toggle("active",x.id===selectedTower));
 
-    return (
-        alarma.estado
-        ===
-        "baja"
-        ||
-        alarma.estado
-        ===
-        "alta"
-    );
+  document.getElementById("leftAmbTemp").textContent=ambT!==null?ambT.toFixed(1)+" °C":"-- °C";
+  document.getElementById("leftRiceTemp").textContent=rice!==null?rice.toFixed(2)+" °C":"-- °C";
+  document.getElementById("callDhtTemp").textContent=ambT!==null?ambT.toFixed(1)+" °C":"-- °C";
+  document.getElementById("callDhtHum").textContent=ambH!==null?ambH.toFixed(1)+" % HR":"-- % HR";
+  document.getElementById("callPtTemp").textContent=rice!==null?rice.toFixed(2)+" °C":"-- °C";
+  document.getElementById("callPtState").textContent=ptOk?"ONLINE":"OFFLINE";
+  document.getElementById("callHydMode").textContent=hydOk&&mode!==null?Number(mode).toFixed(2):"--";
+  document.getElementById("callHydState").textContent=hydOk?"ONLINE · Modo E":"OFFLINE";
+
+  setStatus("statusPt",ptOk,ptOk?"ONLINE":d&&d.estado==="hardware_no_disponible"?"MAX NO DETECTADO":"OFFLINE");
+  document.getElementById("statusPtSub").textContent=ptOk?`Arroz: ${rice.toFixed(2)} °C · ${num(d.resistencia,2)??"--"} Ω`:"Sin lectura válida";
+  setStatus("statusDht",dhtOk,dhtOk?"ONLINE":"OFFLINE");
+  document.getElementById("statusDhtSub").textContent=dhtOk?`${ambT.toFixed(1)} °C · ${ambH!==null?ambH.toFixed(1):"--"} % HR`:"Sin lectura válida";
+  setStatus("statusHyd",hydOk,hydOk?"ONLINE":"OFFLINE");
+  document.getElementById("statusHydSub").textContent=hydOk?`Modo E: ${Number(mode).toFixed(2)}${getHydMatTemp(selectedTower)!==null?" · Material: "+Number(getHydMatTemp(selectedTower)).toFixed(1)+" °C":""}`:"Sin lectura válida";
+
+  const last=lastNodeTelemetry[selectedTower];
+  const lastEl=document.getElementById("lastUpdate");
+  if(last){lastEl.textContent="AHORA";lastEl.className="st-value status-online";}else{lastEl.textContent="SIN DATOS";lastEl.className="st-value status-wait";}
 }
 
+function setStatus(id,ok,text){const el=document.getElementById(id);el.textContent=text;el.className="st-value "+(ok?"status-online":"status-offline");}
 
-function actualizarResumenDistribuido() {
-
-    let pt100Online = 0;
-    let dhtOnline = 0;
-    let alarmasActivas = 0;
-
-    const temperaturasArroz = [];
-    const temperaturasAmbiente = [];
-    const humedadesAmbiente = [];
-
-    TORRES.forEach(
-        function(torre) {
-
-            const datos =
-                datosTorresCache[torre.id];
-
-            if (!datos) {
-                return;
-            }
-
-            if (
-                datos.estado === "online"
-                &&
-                datos.temperatura !== null
-                &&
-                datos.temperatura !== undefined
-            ) {
-                pt100Online++;
-                temperaturasArroz.push(
-                    Number(datos.temperatura)
-                );
-            }
-
-            const ambiente =
-                datos.ambiente
-                ||
-                {};
-
-            if (
-                ambiente.estado === "online"
-                &&
-                ambiente.temperatura !== null
-                &&
-                ambiente.temperatura !== undefined
-            ) {
-                dhtOnline++;
-                temperaturasAmbiente.push(
-                    Number(ambiente.temperatura)
-                );
-
-                if (
-                    ambiente.humedad !== null
-                    &&
-                    ambiente.humedad !== undefined
-                ) {
-                    humedadesAmbiente.push(
-                        Number(ambiente.humedad)
-                    );
-                }
-            }
-
-            const alarmas =
-                datos.alarmas
-                ||
-                {};
-
-            ["arroz", "ambiente"].forEach(
-                function(tipo) {
-                    const estado =
-                        alarmas[tipo]
-                        &&
-                        alarmas[tipo].estado;
-
-                    if (
-                        estado === "baja"
-                        ||
-                        estado === "alta"
-                    ) {
-                        alarmasActivas++;
-                    }
-                }
-            );
-        }
-    );
-
-    const promedio =
-        function(valores) {
-            if (!valores.length) {
-                return null;
-            }
-
-            return (
-                valores.reduce(
-                    function(total, valor) {
-                        return total + valor;
-                    },
-                    0
-                )
-                /
-                valores.length
-            );
-        };
-
-    actualizarResumen(
-        {
-            sensores_online_total:
-                pt100Online + dhtOnline,
-
-            sensores_total:
-                6,
-
-            temperatura_promedio:
-                promedio(temperaturasArroz),
-
-            temperatura_ambiente_promedio:
-                promedio(temperaturasAmbiente),
-
-            humedad_ambiente_promedio:
-                promedio(humedadesAmbiente),
-
-            alarmas_activas:
-                alarmasActivas
-        }
-    );
+function renderCards(){
+  const html=TORRES.map(t=>{
+    const d=nodeData[t.id],a=d&&d.ambiente,pt=getPtOnline(t.id),dh=getDhtOnline(t.id),hy=getHydOnline(t.id),mode=getModeE(t.id);
+    const rice=pt?Number(d.temperatura):null, ambT=dh?Number(a.temperatura):null, ambH=dh&&a.humedad!==null&&a.humedad!==undefined?Number(a.humedad):null;
+    const alarms=d&&d.alarmas;const alert=alarms&&(isAlarm(alarms.arroz)||isAlarm(alarms.ambiente));
+    return `<article class="tower-card ${selectedTower===t.id?"active":""} ${alert?"alert":""}" onclick="seleccionarTorre('${t.id}')">
+      <div class="card-head"><h3>${t.nombre}</h3><span class="node-badge ${nodeState[t.id]==="online"?"":"offline"}">${nodeState[t.id]==="online"?"● NODO ONLINE":"● NODO OFFLINE"}</span></div>
+      <div class="card-metrics">
+        <div class="card-metric rice"><span>Temp. arroz</span><b class="${alarms&&isAlarm(alarms.arroz)?"value-alert":""}">${rice!==null?rice.toFixed(2)+" °C":"-- °C"}</b><div class="sparkline"><i style="width:${rice!==null?Math.min(100,rice*2):0}%"></i></div></div>
+        <div class="card-metric hum"><span>Humedad ambiente</span><b>${ambH!==null?ambH.toFixed(1)+" %":"-- %"}</b><div class="sparkline"><i style="width:${ambH!==null?Math.min(100,ambH):0}%"></i></div></div>
+        <div class="card-metric amb"><span>Temp. ambiente</span><b class="${alarms&&isAlarm(alarms.ambiente)?"value-alert":""}">${ambT!==null?ambT.toFixed(1)+" °C":"-- °C"}</b><div class="sparkline"><i style="width:${ambT!==null?Math.min(100,ambT*2):0}%"></i></div></div>
+        <div class="card-metric hyd"><span>Humedad arroz · Modo E</span><b>${hy&&mode!==null?Number(mode).toFixed(2):"--"}</b><div class="sparkline"><i style="width:${hy&&mode!==null?Math.min(100,Number(mode)*4):0}%"></i></div></div>
+      </div>
+    </article>`;
+  }).join("");
+  document.getElementById("towerCards").innerHTML=html;
 }
 
-function actualizarResumen(
-    resumen
-) {
-
-    const online =
-        resumen.sensores_online_total
-        !== undefined
-        ?
-        resumen.sensores_online_total
-        :
-        resumen.sensores_online
-        ||
-        0;
-
-
-    const total =
-        resumen.sensores_total
-        ||
-        6;
-
-
-    document
-    .getElementById(
-        "sensoresOnline"
-    )
-    .innerText =
-        online
-        +
-        " / "
-        +
-        total;
-
-
-    document
-    .getElementById(
-        "tempArrozProm"
-    )
-    .innerText =
-        resumen.temperatura_promedio
-        !== null
-        &&
-        resumen.temperatura_promedio
-        !== undefined
-        ?
-        Number(
-            resumen.temperatura_promedio
-        )
-        .toFixed(2)
-        +
-        " °C"
-        :
-        "--";
-
-
-    document
-    .getElementById(
-        "tempAmbProm"
-    )
-    .innerText =
-        resumen.temperatura_ambiente_promedio
-        !== null
-        &&
-        resumen.temperatura_ambiente_promedio
-        !== undefined
-        ?
-        Number(
-            resumen.temperatura_ambiente_promedio
-        )
-        .toFixed(1)
-        +
-        " °C"
-        :
-        "--";
-
-
-    document
-    .getElementById(
-        "humAmbProm"
-    )
-    .innerText =
-        resumen.humedad_ambiente_promedio
-        !== null
-        &&
-        resumen.humedad_ambiente_promedio
-        !== undefined
-        ?
-        Number(
-            resumen.humedad_ambiente_promedio
-        )
-        .toFixed(1)
-        +
-        " %"
-        :
-        "--";
-
-
-    const alarmas =
-        Number(
-            resumen.alarmas_activas
-            ||
-            0
-        );
-
-
-    const elementoAlarmas =
-        document.getElementById(
-            "alarmasActivas"
-        );
-
-
-    elementoAlarmas.innerText =
-        alarmas;
-
-
-    elementoAlarmas.classList.toggle(
-        "alarma",
-        alarmas > 0
-    );
+function renderGlobal(){
+  let pico=0,hyd=0,alarms=0;const rice=[];
+  TORRES.forEach(t=>{
+    if(getPtOnline(t.id)){pico++;rice.push(Number(nodeData[t.id].temperatura));}
+    if(getDhtOnline(t.id))pico++;
+    if(getHydOnline(t.id))hyd++;
+    const a=nodeData[t.id]&&nodeData[t.id].alarmas;
+    if(a){if(isAlarm(a.arroz))alarms++;if(isAlarm(a.ambiente))alarms++;}
+  });
+  const total=pico+hyd,pct=Math.round(total/9*100);
+  document.getElementById("picoOnline").textContent=`${pico} / 6`;
+  document.getElementById("hydOnline").textContent=`${hyd} / 3`;
+  document.getElementById("avgRice").textContent=rice.length?(rice.reduce((x,y)=>x+y,0)/rice.length).toFixed(2)+" °C":"-- °C";
+  document.getElementById("activeAlarms").textContent=alarms;
+  document.getElementById("alarmHeaderCount").textContent=alarms;
+  document.getElementById("availabilityPct").textContent=pct+"%";
+  document.getElementById("availabilityGauge").style.setProperty("--gauge",pct+"%");
+  const state=document.getElementById("systemState");
+  if(alarms>0){state.textContent=`ATENCIÓN · ${alarms} ALARMA${alarms===1?"":"S"} ACTIVA${alarms===1?"":"S"}`;state.className="system-ok bad";}
+  else if(total===9){state.textContent="SISTEMA DE SENSORES OPERANDO NORMALMENTE";state.className="system-ok";}
+  else if(total>0){state.textContent=`SISTEMA PARCIAL · ${total} DE 9 SENSORES ONLINE`;state.className="system-ok warn";}
+  else{state.textContent="ESPERANDO DATOS DEL SISTEMA";state.className="system-ok warn";}
 }
 
-
-function procesarHydronix(
-    texto
-) {
-
-    try {
-
-        const datos =
-            JSON.parse(
-                texto
-            );
-
-
-        const torres =
-            datos.torres
-            ||
-            datos;
-
-
-        TORRES.forEach(
-            function(torre) {
-
-                if (
-                    torres[
-                        torre.id
-                    ]
-                ) {
-
-                    estadoHydronix[
-                        torre.id
-                    ] =
-                        torres[
-                            torre.id
-                        ];
-
-                    actualizarHydronixVisual(
-                        torre.id
-                    );
-                }
-            }
-        );
-
-
-        let online = 0;
-
-        TORRES.forEach(
-            function(torre) {
-
-                const sensor =
-                    estadoHydronix[
-                        torre.id
-                    ];
-
-                if (
-                    sensor
-                    &&
-                    sensor.estado === "online"
-                ) {
-                    online++;
-                }
-            }
-        );
-
-
-        document
-        .getElementById(
-            "hydronixOnline"
-        )
-        .innerText =
-            online
-            +
-            " / 3";
-
-    }
-
-    catch(error) {
-        console.error(
-            "Error JSON Hydronix:",
-            error
-        );
-    }
+function abrirAlarmas(){cargarInputsAlarmas();document.getElementById("configStatus").textContent="";document.getElementById("alarmModal").classList.remove("hidden");}
+function cerrarAlarmas(){document.getElementById("alarmModal").classList.add("hidden");}
+function cargarInputsAlarmas(){
+  TORRES.forEach(t=>{const c=configAlarmas[t.id]||{};setInput(`cfg-${t.id}-arroz-min`,c.arroz_min);setInput(`cfg-${t.id}-arroz-max`,c.arroz_max);setInput(`cfg-${t.id}-amb-min`,c.ambiente_min);setInput(`cfg-${t.id}-amb-max`,c.ambiente_max);});
+}
+function setInput(id,v){const e=document.getElementById(id);if(e)e.value=v===null||v===undefined?"":v;}
+function readInput(id){const v=document.getElementById(id).value.trim();return v===""?null:Number(v);}
+function mostrarConfig(text,ok=false){const e=document.getElementById("configStatus");e.textContent=text;e.className="config-status "+(ok?"ok":"");}
+function guardarAlarmas(){
+  if(!client||!client.connected){mostrarConfig("No hay conexión MQTT.");return;}
+  const nuevas={};
+  for(const t of TORRES){
+    const arroz_min=readInput(`cfg-${t.id}-arroz-min`),arroz_max=readInput(`cfg-${t.id}-arroz-max`),ambiente_min=readInput(`cfg-${t.id}-amb-min`),ambiente_max=readInput(`cfg-${t.id}-amb-max`);
+    if(arroz_min!==null&&arroz_max!==null&&arroz_min>=arroz_max){mostrarConfig(`${t.nombre}: el límite bajo del arroz debe ser menor al alto.`);return;}
+    if(ambiente_min!==null&&ambiente_max!==null&&ambiente_min>=ambiente_max){mostrarConfig(`${t.nombre}: el límite bajo ambiente debe ser menor al alto.`);return;}
+    nuevas[t.id]={arroz_min,arroz_max,ambiente_min,ambiente_max};
+  }
+  mostrarConfig("Enviando configuración...",true);
+  let left=TORRES.length,failed=false;
+  TORRES.forEach(t=>client.publish(topicAlarmasSet(t.id),JSON.stringify({alarmas:nuevas[t.id]}),{qos:0,retain:false},err=>{
+    if(err)failed=true;left--;if(left===0){if(failed)mostrarConfig("Una o más torres no recibieron la configuración. Revisa permisos MQTT.");else{configAlarmas=nuevas;mostrarConfig("Enviada a las 3 torres. Esperando confirmación...",true);}}
+  }));
 }
 
+function toggleTendencias(open){
+  document.getElementById("trendPanel").classList.toggle("open",open);
+  document.getElementById("navTrend").classList.toggle("active",open);
+  document.getElementById("navVista").classList.toggle("active",!open);
+  if(open){document.getElementById("trendPanel").scrollIntoView({behavior:"smooth",block:"center"});setTimeout(drawTrend,200);}
+}
+function mostrarVista(){toggleTendencias(false);document.getElementById("vistaOperativa").scrollIntoView({behavior:"smooth"});}
 
-function actualizarHydronixVisual(
-    id
-) {
-
-    const datos =
-        estadoHydronix[id];
-
-    const badge =
-        document.getElementById(
-            "badge-hydronix-" + id
-        );
-
-    const valor =
-        document.getElementById(
-            "hydronix-" + id
-        );
-
-    const filtradaE =
-        document.getElementById(
-            "hydronix-filtrada-e-" + id
-        );
-
-    const tempMaterial =
-        document.getElementById(
-            "hydronix-temp-" + id
-        );
-
-    if (!datos) {
-        badge.innerText = "ESPERANDO";
-        badge.className = "badge badge-espera";
-        valor.innerText = "--";
-        filtradaE.innerText = "--";
-        tempMaterial.innerText = "--";
-        return;
-    }
-
-    const humedadFiltrada =
-        datos.humedad_filtrada_e
-        ??
-        datos.humedad_sensor;
-
-    filtradaE.innerText =
-        humedadFiltrada !== null
-        &&
-        humedadFiltrada !== undefined
-        ?
-        Number(humedadFiltrada).toFixed(2) + " %"
-        :
-        "--";
-
-    tempMaterial.innerText =
-        datos.temperatura_material !== null
-        &&
-        datos.temperatura_material !== undefined
-        ?
-        Number(datos.temperatura_material).toFixed(2) + " °C"
-        :
-        "--";
-
-    const modoE =
-        datos.modo_e
-        ??
-        datos.humedad_arroz;
-
-    if (
-        datos.estado === "online"
-        &&
-        modoE !== null
-        &&
-        modoE !== undefined
-    ) {
-        badge.innerText = "HYDRONIX ONLINE";
-        badge.className = "badge badge-online";
-        valor.innerText = Number(modoE).toFixed(2);
-        valor.style.color = "var(--azul)";
-        return;
-    }
-
-    badge.innerText = "HYDRONIX OFFLINE";
-    badge.className = "badge badge-offline";
-    valor.innerText = "--";
-    valor.style.color = "var(--azul)";
+function drawTrend(){
+  const canvas=document.getElementById("trendCanvas");if(!canvas)return;
+  const rect=canvas.getBoundingClientRect();if(rect.width<10||rect.height<10)return;
+  const dpr=window.devicePixelRatio||1;canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;
+  const ctx=canvas.getContext("2d");ctx.scale(dpr,dpr);const w=rect.width,h=rect.height,p={l:44,r:16,t:16,b:28},pw=w-p.l-p.r,ph=h-p.t-p.b;
+  const all=[...history.torre01,...history.torre02,...history.torre03];
+  ctx.clearRect(0,0,w,h);ctx.font="10px Segoe UI";
+  if(!all.length){ctx.fillStyle="#8eaa98";ctx.fillText("Esperando lecturas de temperatura del arroz...",p.l,p.t+30);return;}
+  let min=Math.min(...all),max=Math.max(...all);if(max-min<4){min-=2;max+=2;}else{min-=1;max+=1;}
+  ctx.strokeStyle="rgba(77,185,123,.13)";ctx.fillStyle="#7f9b89";
+  for(let j=0;j<=4;j++){const y=p.t+ph*j/4;ctx.beginPath();ctx.moveTo(p.l,y);ctx.lineTo(w-p.r,y);ctx.stroke();ctx.fillText((max-(max-min)*j/4).toFixed(1)+"°",4,y+3);}
+  const defs=[{id:"torre01",c:"#28d77f"},{id:"torre02",c:"#38a8ff"},{id:"torre03",c:"#ffc43d"}];
+  defs.forEach(def=>{const arr=history[def.id];if(arr.length<2)return;ctx.beginPath();arr.forEach((v,i)=>{const x=p.l+pw*i/Math.max(1,119),y=p.t+ph*(max-v)/(max-min);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.strokeStyle=def.c;ctx.lineWidth=2.2;ctx.stroke();});
+  ctx.fillStyle="#7f9b89";ctx.fillText("Inicio sesión",p.l,h-7);ctx.fillText("Ahora",w-46,h-7);
 }
 
-function procesarAlarmasStateNodo(
-    torreId,
-    texto
-) {
-
-    try {
-
-        const datos =
-            JSON.parse(
-                texto
-            );
-
-        if (
-            datos.alarmas
-        ) {
-
-            configAlarmas[torreId] =
-                datos.alarmas;
-
-            cargarInputsAlarmas();
-
-            const torre =
-                TORRES.find(
-                    function(item) {
-                        return item.id === torreId;
-                    }
-                );
-
-            const estado =
-                document
-                .getElementById(
-                    "configStatus"
-                );
-
-            estado.innerText =
-                "Configuracion confirmada por "
-                +
-                (
-                    torre
-                    ?
-                    torre.nombre
-                    :
-                    torreId
-                )
-                +
-                ".";
-
-            estado.className =
-                "config-status ok";
-        }
-    }
-
-    catch(error) {
-        console.error(
-            "Error JSON alarmas " + torreId + ":",
-            error
-        );
-    }
-}
-
-function abrirConfiguracion() {
-
-    cargarInputsAlarmas();
-
-    document
-    .getElementById(
-        "configStatus"
-    )
-    .innerText =
-        "";
-
-    document
-    .getElementById(
-        "configOverlay"
-    )
-    .classList.remove(
-        "oculto"
-    );
-}
-
-
-function cerrarConfiguracion() {
-
-    document
-    .getElementById(
-        "configOverlay"
-    )
-    .classList.add(
-        "oculto"
-    );
-}
-
-
-function cargarInputsAlarmas() {
-
-    TORRES.forEach(
-        function(torre) {
-
-            const cfg =
-                configAlarmas[
-                    torre.id
-                ]
-                ||
-                {};
-
-            setInput(
-                `cfg-${torre.id}-arroz-min`,
-                cfg.arroz_min
-            );
-
-            setInput(
-                `cfg-${torre.id}-arroz-max`,
-                cfg.arroz_max
-            );
-
-            setInput(
-                `cfg-${torre.id}-amb-min`,
-                cfg.ambiente_min
-            );
-
-            setInput(
-                `cfg-${torre.id}-amb-max`,
-                cfg.ambiente_max
-            );
-        }
-    );
-}
-
-
-function setInput(
-    id,
-    valor
-) {
-
-    document
-    .getElementById(
-        id
-    )
-    .value =
-        valor === null
-        ||
-        valor === undefined
-        ?
-        ""
-        :
-        valor;
-}
-
-
-function leerNumeroInput(
-    id
-) {
-
-    const valor =
-        document
-        .getElementById(
-            id
-        )
-        .value
-        .trim();
-
-
-    if (valor === "") {
-        return null;
-    }
-
-
-    return Number(valor);
-}
-
-
-function guardarAlarmas() {
-
-    if (
-        !client
-        ||
-        !client.connected
-    ) {
-
-        mostrarEstadoConfig(
-            "No hay conexión MQTT.",
-            false
-        );
-
-        return;
-    }
-
-
-    const nuevas = {};
-
-
-    for (
-        const torre
-        of
-        TORRES
-    ) {
-
-        const arrozMin =
-            leerNumeroInput(
-                `cfg-${torre.id}-arroz-min`
-            );
-
-        const arrozMax =
-            leerNumeroInput(
-                `cfg-${torre.id}-arroz-max`
-            );
-
-        const ambMin =
-            leerNumeroInput(
-                `cfg-${torre.id}-amb-min`
-            );
-
-        const ambMax =
-            leerNumeroInput(
-                `cfg-${torre.id}-amb-max`
-            );
-
-
-        if (
-            arrozMin !== null
-            &&
-            arrozMax !== null
-            &&
-            arrozMin >= arrozMax
-        ) {
-
-            mostrarEstadoConfig(
-                `${torre.nombre}: el límite bajo del arroz debe ser menor al alto.`,
-                false
-            );
-
-            return;
-        }
-
-
-        if (
-            ambMin !== null
-            &&
-            ambMax !== null
-            &&
-            ambMin >= ambMax
-        ) {
-
-            mostrarEstadoConfig(
-                `${torre.nombre}: el límite bajo ambiente debe ser menor al alto.`,
-                false
-            );
-
-            return;
-        }
-
-
-        nuevas[
-            torre.id
-        ] = {
-            arroz_min: arrozMin,
-            arroz_max: arrozMax,
-            ambiente_min: ambMin,
-            ambiente_max: ambMax
-        };
-    }
-
-
-    mostrarEstadoConfig(
-        "Enviando configuración...",
-        true
-    );
-
-
-    let publicacionesPendientes =
-        TORRES.length;
-
-    let huboError =
-        false;
-
-
-    TORRES.forEach(
-        function(torre) {
-
-            client.publish(
-                topicAlarmasSet(
-                    torre.id
-                ),
-                JSON.stringify(
-                    {
-                        alarmas:
-                            nuevas[torre.id]
-                    }
-                ),
-                {
-                    qos: 0,
-                    retain: false
-                },
-                function(error) {
-
-                    publicacionesPendientes--;
-
-                    if (error) {
-                        huboError = true;
-                    }
-
-                    if (
-                        publicacionesPendientes
-                        ===
-                        0
-                    ) {
-
-                        if (huboError) {
-                            mostrarEstadoConfig(
-                                "Una o mas torres no recibieron la configuracion. Revisa permisos MQTT.",
-                                false
-                            );
-
-                            return;
-                        }
-
-                        configAlarmas =
-                            nuevas;
-
-                        mostrarEstadoConfig(
-                            "Enviada a las 3 torres. Esperando confirmacion...",
-                            true
-                        );
-                    }
-                }
-            );
-        }
-    );
-}
-
-
-function mostrarEstadoConfig(
-    texto,
-    ok
-) {
-
-    const estado =
-        document
-        .getElementById(
-            "configStatus"
-        );
-
-    estado.innerText =
-        texto;
-
-    estado.className =
-        ok
-        ?
-        "config-status ok"
-        :
-        "config-status";
-}
-
-
-function dibujarGrafica() {
-
-    const todos =
-        [
-            ...historial.torre01,
-            ...historial.torre02,
-            ...historial.torre03
-        ];
-
-
-    if (
-        todos.length
-        <
-        2
-    ) {
-        return;
-    }
-
-
-    let minimo =
-        Math.min(
-            ...todos
-        );
-
-
-    let maximo =
-        Math.max(
-            ...todos
-        );
-
-
-    if (
-        maximo
-        -
-        minimo
-        <
-        2
-    ) {
-        minimo -= 1;
-        maximo += 1;
-    }
-
-
-    dibujarLinea(
-        "torre01",
-        minimo,
-        maximo
-    );
-
-    dibujarLinea(
-        "torre02",
-        minimo,
-        maximo
-    );
-
-    dibujarLinea(
-        "torre03",
-        minimo,
-        maximo
-    );
-}
-
-
-function dibujarLinea(
-    id,
-    minimo,
-    maximo
-) {
-
-    const datos =
-        historial[id];
-
-
-    if (
-        datos.length
-        <
-        2
-    ) {
-        return;
-    }
-
-
-    const puntos =
-        datos
-        .map(
-            function(
-                temperatura,
-                index
-            ) {
-
-                const x =
-                    index
-                    *
-                    (
-                        1200
-                        /
-                        (
-                            datos.length
-                            -
-                            1
-                        )
-                    );
-
-
-                const y =
-                    250
-                    -
-                    (
-                        (
-                            temperatura
-                            -
-                            minimo
-                        )
-                        /
-                        (
-                            maximo
-                            -
-                            minimo
-                        )
-                    )
-                    *
-                    225;
-
-
-                return (
-                    x.toFixed(1)
-                    +
-                    ","
-                    +
-                    y.toFixed(1)
-                );
-            }
-        )
-        .join(" ");
-
-
-    document
-    .getElementById(
-        "linea-" + id
-    )
-    .setAttribute(
-        "points",
-        puntos
-    );
-}
-
-
-setInterval(
-    function() {
-
-        let huboCambio =
-            false;
-
-        TORRES.forEach(
-            function(torre) {
-
-                const id =
-                    torre.id;
-
-                const ultimaRecepcion =
-                    ultimaRecepcionNodo[id];
-
-                if (!ultimaRecepcion) {
-                    return;
-                }
-
-                const segundos =
-                    Math.floor(
-                        (
-                            Date.now()
-                            -
-                            ultimaRecepcion
-                        )
-                        /
-                        1000
-                    );
-
-                const elemento =
-                    document
-                    .getElementById(
-                        "ultima-" + id
-                    );
-
-                elemento.innerText =
-                    segundos <= 2
-                    ?
-                    "Ahora"
-                    :
-                    "Hace "
-                    +
-                    segundos
-                    +
-                    " s";
-
-
-                // Cada nodo publica aproximadamente cada 2 segundos.
-                // Si pasan mas de 10 s sin telemetria, limpiamos la torre.
-                if (
-                    segundos
-                    >
-                    10
-                ) {
-
-                    datosTorresCache[id] =
-                        null;
-
-                    ultimaRecepcionNodo[id] =
-                        0;
-
-                    marcarTorreOffline(
-                        id
-                    );
-
-                    huboCambio =
-                        true;
-                }
-            }
-        );
-
-
-        if (huboCambio) {
-            actualizarResumenDistribuido();
-            dibujarGrafica();
-        }
-    },
-    1000
-);
-
-function marcarTorreOffline(
-    id
-) {
-
-    ultimaLectura[id] = null;
-
-    const badgePt =
-        document.getElementById(
-            "badge-pt100-" + id
-        );
-
-    const badgeDht =
-        document.getElementById(
-            "badge-dht-" + id
-        );
-
-    badgePt.innerText =
-        "PT100 OFFLINE";
-
-    badgePt.className =
-        "badge badge-offline";
-
-    badgeDht.innerText =
-        "DHT22 OFFLINE";
-
-    badgeDht.className =
-        "badge badge-offline";
-
-
-    document
-    .getElementById(
-        "arroz-" + id
-    )
-    .innerHTML =
-        '--<span class="metric-unidad"> °C</span>';
-
-
-    document
-    .getElementById(
-        "res-" + id
-    )
-    .innerText =
-        "--";
-
-
-    document
-    .getElementById(
-        "max-" + id
-    )
-    .innerText =
-        "--";
-
-
-    document
-    .getElementById(
-        "hilos-" + id
-    )
-    .innerText =
-        "--";
-
-
-    document
-    .getElementById(
-        "amb-temp-" + id
-    )
-    .innerText =
-        "-- °C";
-
-
-    document
-    .getElementById(
-        "amb-hum-" + id
-    )
-    .innerText =
-        "-- %";
-
-
-    document
-    .getElementById(
-        "ultima-" + id
-    )
-    .innerText =
-        "Sin datos";
-
-
-    const card =
-        document.getElementById(
-            "card-" + id
-        );
-
-    if (card) {
-        card.classList.remove(
-            "torre-alerta"
-        );
-    }
-}
-function marcarTodoOffline() {
-
-    TORRES.forEach(
-        function(torre) {
-
-            const id =
-                torre.id;
-
-            datosTorresCache[id] =
-                null;
-
-            ultimaRecepcionNodo[id] =
-                0;
-
-            marcarTorreOffline(
-                id
-            );
-        }
-    );
-}
-
-document
-.getElementById(
-    "mqttPassword"
-)
-.addEventListener(
-    "keydown",
-    function(event) {
-
-        if (
-            event.key
-            ===
-            "Enter"
-        ) {
-            conectar();
-        }
-    }
-);
-
-
-document
-.getElementById(
-    "configOverlay"
-)
-.addEventListener(
-    "click",
-    function(event) {
-
-        if (
-            event.target
-            ===
-            this
-        ) {
-            cerrarConfiguracion();
-        }
-    }
-);
-
-
-crearTorres();
-crearFormularioAlarmas();
+function updateClock(){document.getElementById("clock").textContent=new Date().toLocaleTimeString("es-CO",{hour12:false});}
+
+// Protección contra telemetría retenida obsoleta: el estado retained ONLINE/OFFLINE manda.
+setInterval(()=>{
+  const now=Date.now();let changed=false;
+  TORRES.forEach(t=>{
+    if(lastNodeTelemetry[t.id]&&now-lastNodeTelemetry[t.id]>12000){nodeData[t.id]=null;lastNodeTelemetry[t.id]=0;changed=true;}
+  });
+  if(lastHydronixTelemetry&&now-lastHydronixTelemetry>12000){
+    TORRES.forEach(t=>hydData[t.id]=null);lastHydronixTelemetry=0;changed=true;
+  }
+  if(changed)renderAll();
+
+  const last=lastNodeTelemetry[selectedTower];
+  if(last){
+    const sec=Math.floor((now-last)/1000);const e=document.getElementById("lastUpdate");
+    e.textContent=sec<2?"AHORA":`HACE ${sec} s`;e.className="st-value "+(sec<=10?"status-online":"status-wait");
+  }
+},1000);
+
+constructInit();
+function constructInit(){construirAlarmGrid();renderAll();drawTrend();updateClock();setInterval(updateClock,1000);window.addEventListener("resize",drawTrend);document.getElementById("mqttPassword").addEventListener("keydown",e=>{if(e.key==="Enter")conectar();});}
 </script>
-
 </body>
 </html>
