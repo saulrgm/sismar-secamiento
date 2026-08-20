@@ -95,6 +95,9 @@ a{color:inherit}
 .status-block{display:flex;align-items:center;gap:8px}
 .alert-shell{display:flex;justify-content:flex-end}
 .alert-btn{position:relative;width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:#081211;color:#fff}
+.sound-btn{width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:#081211;color:#9eb2aa;font-size:18px;cursor:pointer;transition:.2s ease;box-shadow:none}
+.sound-btn:hover{border-color:rgba(69,241,142,.45);color:#fff}
+.sound-btn.enabled{color:#45f18e;border-color:rgba(69,241,142,.55);box-shadow:0 0 0 3px rgba(69,241,142,.06),0 0 22px rgba(69,241,142,.10)}
 .alert-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#35da73;color:#06110b;font-size:10px;font-weight:900;display:grid;place-items:center}
 
 .main-grid{display:grid;grid-template-columns:320px minmax(680px,1fr) 360px;gap:16px;align-items:start}
@@ -509,7 +512,7 @@ a{color:inherit}
         <div class="status-block">🕘 <div><small>Hora</small><b id="clock">--:--:--</b></div></div>
         <div class="status-block">📅 <div><small>Fecha</small><b id="sysDate">--/--/----</b></div></div>
       </div>
-      <div class="alert-shell"><button class="alert-btn" onclick="abrirAlarmas()">🔔<span class="alert-badge" id="alarmHeaderCount">0</span></button></div>
+      <div class="alert-shell" style="gap:8px"><button class="sound-btn" id="soundBtn" onclick="probarSonido()" title="Activar y probar sonido de alarmas">🔇</button><button class="alert-btn" onclick="abrirAlarmas()">🔔<span class="alert-badge" id="alarmHeaderCount">0</span></button></div>
     </div>
   </header>
 
@@ -707,6 +710,7 @@ function construirAlarmGrid(){
     </div>`).join("");
 }
 function conectar(){
+  habilitarAudio(false);
   const password=document.getElementById("mqttPassword").value;
   const err=document.getElementById("loginError");
   if(!password){err.textContent="Ingresa la contraseña MQTT.";return;}
@@ -752,21 +756,71 @@ function procesarMensaje(topic,message){
   else if(parts[3]==="alarmas"&&parts[4]==="eventos")procesarEventoAlarma(id,text);
   else if(parts[3]==="config"&&parts[4]==="alarmas"&&parts[5]==="state")procesarAlarmState(id,text);
 }
+let alarmAudioCtx=null;
+let audioHabilitado=false;
+
+function obtenerAudioContext(){
+  const AudioCtx=window.AudioContext||window.webkitAudioContext;
+  if(!AudioCtx)return null;
+  if(!alarmAudioCtx)alarmAudioCtx=new AudioCtx();
+  return alarmAudioCtx;
+}
+
+function actualizarBotonAudio(){
+  const btn=document.getElementById("soundBtn");
+  if(!btn)return;
+  btn.textContent=audioHabilitado?"🔊":"🔇";
+  btn.classList.toggle("enabled",audioHabilitado);
+  btn.title=audioHabilitado?"Sonido de alarmas habilitado. Clic para probar.":"Clic para activar y probar sonido de alarmas";
+}
+
+async function habilitarAudio(probar=false){
+  try{
+    const ctx=obtenerAudioContext();
+    if(!ctx){audioHabilitado=false;actualizarBotonAudio();return false;}
+    if(ctx.state==="suspended")await ctx.resume();
+    audioHabilitado=ctx.state==="running";
+    actualizarBotonAudio();
+    if(probar&&audioHabilitado)beepAlarma();
+    return audioHabilitado;
+  }catch(e){
+    audioHabilitado=false;
+    actualizarBotonAudio();
+    console.warn("No fue posible habilitar el audio de alarmas",e);
+    return false;
+  }
+}
+
+async function probarSonido(){
+  const ok=await habilitarAudio(false);
+  if(ok)beepAlarma();
+}
+
 function beepAlarma(){
   try{
-    const AudioCtx=window.AudioContext||window.webkitAudioContext;
-    if(!AudioCtx)return;
-    const ctx=new AudioCtx();
-    const osc=ctx.createOscillator();
-    const gain=ctx.createGain();
-    osc.type="sine";
-    osc.frequency.value=880;
-    gain.gain.setValueAtTime(0.0001,ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.12,ctx.currentTime+0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.45);
-    osc.connect(gain);gain.connect(ctx.destination);
-    osc.start();osc.stop(ctx.currentTime+0.48);
-    setTimeout(()=>ctx.close(),650);
+    const ctx=obtenerAudioContext();
+    if(!ctx||ctx.state!=="running"){
+      audioHabilitado=false;
+      actualizarBotonAudio();
+      return;
+    }
+    const inicio=ctx.currentTime;
+    const tonos=[880,1040,880];
+    tonos.forEach((freq,i)=>{
+      const t=inicio+(i*0.34);
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      osc.type="square";
+      osc.frequency.setValueAtTime(freq,t);
+      gain.gain.setValueAtTime(0.0001,t);
+      gain.gain.exponentialRampToValueAtTime(0.16,t+0.025);
+      gain.gain.setValueAtTime(0.16,t+0.16);
+      gain.gain.exponentialRampToValueAtTime(0.0001,t+0.26);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t+0.28);
+    });
   }catch(e){console.warn("Audio alarma no disponible",e);}
 }
 
@@ -979,6 +1033,9 @@ function updateClock(){const now=new Date();document.getElementById("clock").tex
 setInterval(()=>{const now=Date.now();let changed=false;TORRES.forEach(t=>{if(lastNodeTelemetry[t.id]&&now-lastNodeTelemetry[t.id]>12000){nodeData[t.id]=null;lastNodeTelemetry[t.id]=0;changed=true;}});if(lastHydronixTelemetry&&now-lastHydronixTelemetry>12000){TORRES.forEach(t=>hydData[t.id]=null);lastHydronixTelemetry=0;changed=true;}if(changed)renderAll();const last=lastNodeTelemetry[selectedTower];if(last){const sec=Math.floor((now-last)/1000);const e=document.getElementById("lastUpdate");const ei=document.getElementById("lastUpdateInline");const text=sec<2?"AHORA":`HACE ${sec} s`;e.textContent=text;ei.textContent=text;e.className="st-value "+(sec<=10?"status-online":"status-wait");}},1000);
 function constructInit(){construirAlarmGrid();renderAll();drawTrend();updateClock();setInterval(updateClock,1000);window.addEventListener("resize",drawTrend);document.getElementById("mqttPassword").addEventListener("keydown",e=>{if(e.key==="Enter")conectar();});}
 constructInit();
+
+// El navegador puede bloquear audio automático. El botón 🔊 permite habilitarlo y probarlo.
+document.addEventListener("DOMContentLoaded",actualizarBotonAudio);
 </script>
 </body>
 </html>
