@@ -4,7 +4,48 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SISMAR | Monitoreo Integral de Secamiento</title>
-<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script>
+/* SISMAR - Cargador robusto MQTT.js para navegador.
+   Evita que un fallo puntual de un CDN deje mqtt indefinido. */
+window.SISMAR_MQTT_SOURCE = null;
+window.SISMAR_MQTT_READY = new Promise(function(resolve, reject){
+  const fuentes = [
+    "https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.15.1/mqtt.min.js",
+    "https://cdn.jsdelivr.net/npm/mqtt@5.15.1/dist/mqtt.min.js",
+    "https://unpkg.com/mqtt@5.15.1/dist/mqtt.min.js"
+  ];
+  let i = 0;
+  function intentar(){
+    if (window.mqtt && typeof window.mqtt.connect === "function") {
+      resolve(window.mqtt);
+      return;
+    }
+    if (i >= fuentes.length) {
+      reject(new Error("No fue posible cargar MQTT.js desde los servidores de respaldo."));
+      return;
+    }
+    const src = fuentes[i++];
+    const tag = document.createElement("script");
+    tag.src = src;
+    tag.async = true;
+    tag.onload = function(){
+      if (window.mqtt && typeof window.mqtt.connect === "function") {
+        window.SISMAR_MQTT_SOURCE = src;
+        console.info("SISMAR | MQTT.js cargado:", src);
+        resolve(window.mqtt);
+      } else {
+        intentar();
+      }
+    };
+    tag.onerror = function(){
+      console.warn("SISMAR | Fallo cargando MQTT.js:", src);
+      intentar();
+    };
+    document.head.appendChild(tag);
+  }
+  intentar();
+});
+</script>
 <style>
 :root{
   --bg:#020607;
@@ -709,14 +750,26 @@ function construirAlarmGrid(){
       <div class="alarm-group"><div class="alarm-group-title">Temperatura ambiente</div><div class="input-pair"><div class="field"><label>Baja °C</label><input id="cfg-${t.id}-amb-min" type="number" step="0.1" placeholder="Sin límite"></div><div class="field"><label>Alta °C</label><input id="cfg-${t.id}-amb-max" type="number" step="0.1" placeholder="Sin límite"></div></div></div>
     </div>`).join("");
 }
-function conectar(){
+async function conectar(){
   habilitarAudio(false);
   const password=document.getElementById("mqttPassword").value;
   const err=document.getElementById("loginError");
   if(!password){err.textContent="Ingresa la contraseña MQTT.";return;}
-  err.textContent="Conectando...";
+  err.textContent="Cargando comunicación MQTT...";
+  try{
+    await window.SISMAR_MQTT_READY;
+  }catch(e){
+    console.error("SISMAR | MQTT.js no disponible",e);
+    err.textContent="No se pudo cargar el componente MQTT. Actualiza con Ctrl+F5 y revisa Internet.";
+    return;
+  }
+  if(!window.mqtt || typeof window.mqtt.connect!=="function"){
+    err.textContent="Componente MQTT no disponible. Actualiza la página con Ctrl+F5.";
+    return;
+  }
+  err.textContent="Conectando a SISMAR...";
   const clientId="sismar-oficial-"+Date.now().toString(36)+"-"+Math.random().toString(16).slice(2,8);
-  client=mqtt.connect(BROKER,{clientId,username:MQTT_USER,password,clean:true,reconnectPeriod:3000,connectTimeout:10000});
+  client=window.mqtt.connect(BROKER,{clientId,username:MQTT_USER,password,clean:true,reconnectPeriod:3000,connectTimeout:10000});
   client.on("connect",()=>{
     document.getElementById("loginOverlay").classList.add("hidden");
     setConnection(true);
