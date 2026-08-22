@@ -4,7 +4,48 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SISMAR | Monitoreo Integral de Secamiento</title>
-<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script>
+/* SISMAR - Cargador robusto MQTT.js para navegador.
+   Evita que un fallo puntual de un CDN deje mqtt indefinido. */
+window.SISMAR_MQTT_SOURCE = null;
+window.SISMAR_MQTT_READY = new Promise(function(resolve, reject){
+  const fuentes = [
+    "https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.15.1/mqtt.min.js",
+    "https://cdn.jsdelivr.net/npm/mqtt@5.15.1/dist/mqtt.min.js",
+    "https://unpkg.com/mqtt@5.15.1/dist/mqtt.min.js"
+  ];
+  let i = 0;
+  function intentar(){
+    if (window.mqtt && typeof window.mqtt.connect === "function") {
+      resolve(window.mqtt);
+      return;
+    }
+    if (i >= fuentes.length) {
+      reject(new Error("No fue posible cargar MQTT.js desde los servidores de respaldo."));
+      return;
+    }
+    const src = fuentes[i++];
+    const tag = document.createElement("script");
+    tag.src = src;
+    tag.async = true;
+    tag.onload = function(){
+      if (window.mqtt && typeof window.mqtt.connect === "function") {
+        window.SISMAR_MQTT_SOURCE = src;
+        console.info("SISMAR | MQTT.js cargado:", src);
+        resolve(window.mqtt);
+      } else {
+        intentar();
+      }
+    };
+    tag.onerror = function(){
+      console.warn("SISMAR | Fallo cargando MQTT.js:", src);
+      intentar();
+    };
+    document.head.appendChild(tag);
+  }
+  intentar();
+});
+</script>
 <style>
 :root{
   --bg:#020607;
@@ -95,6 +136,9 @@ a{color:inherit}
 .status-block{display:flex;align-items:center;gap:8px}
 .alert-shell{display:flex;justify-content:flex-end}
 .alert-btn{position:relative;width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:#081211;color:#fff}
+.sound-btn{width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:#081211;color:#9eb2aa;font-size:18px;cursor:pointer;transition:.2s ease;box-shadow:none}
+.sound-btn:hover{border-color:rgba(69,241,142,.45);color:#fff}
+.sound-btn.enabled{color:#45f18e;border-color:rgba(69,241,142,.55);box-shadow:0 0 0 3px rgba(69,241,142,.06),0 0 22px rgba(69,241,142,.10)}
 .alert-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#35da73;color:#06110b;font-size:10px;font-weight:900;display:grid;place-items:center}
 
 .main-grid{display:grid;grid-template-columns:320px minmax(680px,1fr) 360px;gap:16px;align-items:start}
@@ -443,6 +487,21 @@ a{color:inherit}
   .sensor-tag.dht{left:2%} .sensor-tag.pt,.sensor-tag.hyd{right:2%}
   .alarm-grid{grid-template-columns:1fr}
 }
+
+/* alarmas en pagina */
+.alarm-toast-stack{position:fixed;right:18px;top:112px;z-index:105;display:grid;gap:10px;width:min(390px,calc(100vw - 36px));pointer-events:none}
+.alarm-toast{pointer-events:auto;padding:14px 15px;border-radius:16px;background:rgba(12,17,16,.97);border:1px solid rgba(255,138,116,.42);box-shadow:0 20px 60px rgba(0,0,0,.5);animation:alarmSlide .25s ease both}
+.alarm-toast.restablecida{border-color:rgba(69,241,142,.36)}
+.alarm-toast .at-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.alarm-toast .at-title{font-size:13px;font-weight:900;color:#ff9b86}
+.alarm-toast.restablecida .at-title{color:#7effb1}
+.alarm-toast .at-close{border:0;background:transparent;color:#9eb2aa;font-size:18px;padding:0 2px}
+.alarm-toast .at-tower{margin-top:7px;font-size:12px;font-weight:850;color:#fff}
+.alarm-toast .at-msg{margin-top:4px;font-size:12px;color:#cbd9d1;line-height:1.4}
+.alarm-toast .at-values{margin-top:8px;display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#91aa9e}
+.alarm-toast .at-values b{color:#fff}
+@keyframes alarmSlide{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
+
 </style>
 </head>
 <body>
@@ -494,7 +553,7 @@ a{color:inherit}
         <div class="status-block">🕘 <div><small>Hora</small><b id="clock">--:--:--</b></div></div>
         <div class="status-block">📅 <div><small>Fecha</small><b id="sysDate">--/--/----</b></div></div>
       </div>
-      <div class="alert-shell"><button class="alert-btn" onclick="abrirAlarmas()">🔔<span class="alert-badge" id="alarmHeaderCount">0</span></button></div>
+      <div class="alert-shell" style="gap:8px"><button class="sound-btn" id="soundBtn" onclick="probarSonido()" title="Activar y probar sonido de alarmas">🔇</button><button class="alert-btn" onclick="abrirAlarmas()">🔔<span class="alert-badge" id="alarmHeaderCount">0</span></button></div>
     </div>
   </header>
 
@@ -641,6 +700,7 @@ a{color:inherit}
   </section>
 </div>
 
+<div class="alarm-toast-stack" id="alarmToastStack"></div>
 <nav class="bottom-nav">
   <div class="bottom-nav-inner">
     <button class="nav-btn active" id="navVista" onclick="mostrarVista()">⦿ VISTA OPERATIVA</button>
@@ -656,6 +716,7 @@ const MQTT_USER = "dashboard_sismar";
 const TOPIC_TELEMETRIA_NODOS = "sismar/secador01/+/telemetria";
 const TOPIC_ESTADO_NODOS = "sismar/secador01/+/estado";
 const TOPIC_ALARMAS_STATE_NODOS = "sismar/secador01/+/config/alarmas/state";
+const TOPIC_ALARMAS_EVENTOS_NODOS = "sismar/secador01/+/alarmas/eventos";
 const TOPIC_HYDRONIX = "sismar/secador01/hydronix/telemetria";
 const TOPIC_HYDRONIX_ESTADO = "sismar/secador01/hydronix/estado";
 const TORRES = [
@@ -673,9 +734,9 @@ const lastNodeTelemetry = {torre01:0,torre02:0,torre03:0};
 const hydData = {torre01:null,torre02:null,torre03:null};
 const history = {torre01:[],torre02:[],torre03:[]};
 let configAlarmas = {
-  torre01:{arroz_min:null,arroz_max:null,ambiente_min:null,ambiente_max:null},
-  torre02:{arroz_min:null,arroz_max:null,ambiente_min:null,ambiente_max:null},
-  torre03:{arroz_min:null,arroz_max:null,ambiente_min:null,ambiente_max:null}
+  torre01:{arroz_min:null,arroz_max:45.0,ambiente_min:null,ambiente_max:120.0},
+  torre02:{arroz_min:null,arroz_max:45.0,ambiente_min:null,ambiente_max:120.0},
+  torre03:{arroz_min:null,arroz_max:45.0,ambiente_min:null,ambiente_max:120.0}
 };
 function topicAlarmasSet(id){return `sismar/secador01/${id}/config/alarmas/set`;}
 function num(v,d=1){return v===null||v===undefined||Number.isNaN(Number(v))?null:Number(v).toFixed(d);}
@@ -689,19 +750,33 @@ function construirAlarmGrid(){
       <div class="alarm-group"><div class="alarm-group-title">Temperatura ambiente</div><div class="input-pair"><div class="field"><label>Baja °C</label><input id="cfg-${t.id}-amb-min" type="number" step="0.1" placeholder="Sin límite"></div><div class="field"><label>Alta °C</label><input id="cfg-${t.id}-amb-max" type="number" step="0.1" placeholder="Sin límite"></div></div></div>
     </div>`).join("");
 }
-function conectar(){
+async function conectar(){
+  habilitarAudio(false);
   const password=document.getElementById("mqttPassword").value;
   const err=document.getElementById("loginError");
   if(!password){err.textContent="Ingresa la contraseña MQTT.";return;}
-  err.textContent="Conectando...";
+  err.textContent="Cargando comunicación MQTT...";
+  try{
+    await window.SISMAR_MQTT_READY;
+  }catch(e){
+    console.error("SISMAR | MQTT.js no disponible",e);
+    err.textContent="No se pudo cargar el componente MQTT. Actualiza con Ctrl+F5 y revisa Internet.";
+    return;
+  }
+  if(!window.mqtt || typeof window.mqtt.connect!=="function"){
+    err.textContent="Componente MQTT no disponible. Actualiza la página con Ctrl+F5.";
+    return;
+  }
+  err.textContent="Conectando a SISMAR...";
   const clientId="sismar-oficial-"+Date.now().toString(36)+"-"+Math.random().toString(16).slice(2,8);
-  client=mqtt.connect(BROKER,{clientId,username:MQTT_USER,password,clean:true,reconnectPeriod:3000,connectTimeout:10000});
+  client=window.mqtt.connect(BROKER,{clientId,username:MQTT_USER,password,clean:true,reconnectPeriod:3000,connectTimeout:10000});
   client.on("connect",()=>{
     document.getElementById("loginOverlay").classList.add("hidden");
     setConnection(true);
     client.subscribe(TOPIC_TELEMETRIA_NODOS);
     client.subscribe(TOPIC_ESTADO_NODOS);
     client.subscribe(TOPIC_ALARMAS_STATE_NODOS);
+    client.subscribe(TOPIC_ALARMAS_EVENTOS_NODOS);
     client.subscribe(TOPIC_HYDRONIX);
     client.subscribe(TOPIC_HYDRONIX_ESTADO);
   });
@@ -731,8 +806,108 @@ function procesarMensaje(topic,message){
   if(!torreById(id))return;
   if(parts[3]==="telemetria")procesarNodo(id,text);
   else if(parts[3]==="estado")procesarEstadoNodo(id,text);
+  else if(parts[3]==="alarmas"&&parts[4]==="eventos")procesarEventoAlarma(id,text);
   else if(parts[3]==="config"&&parts[4]==="alarmas"&&parts[5]==="state")procesarAlarmState(id,text);
 }
+let alarmAudioCtx=null;
+let audioHabilitado=false;
+
+function obtenerAudioContext(){
+  const AudioCtx=window.AudioContext||window.webkitAudioContext;
+  if(!AudioCtx)return null;
+  if(!alarmAudioCtx)alarmAudioCtx=new AudioCtx();
+  return alarmAudioCtx;
+}
+
+function actualizarBotonAudio(){
+  const btn=document.getElementById("soundBtn");
+  if(!btn)return;
+  btn.textContent=audioHabilitado?"🔊":"🔇";
+  btn.classList.toggle("enabled",audioHabilitado);
+  btn.title=audioHabilitado?"Sonido de alarmas habilitado. Clic para probar.":"Clic para activar y probar sonido de alarmas";
+}
+
+async function habilitarAudio(probar=false){
+  try{
+    const ctx=obtenerAudioContext();
+    if(!ctx){audioHabilitado=false;actualizarBotonAudio();return false;}
+    if(ctx.state==="suspended")await ctx.resume();
+    audioHabilitado=ctx.state==="running";
+    actualizarBotonAudio();
+    if(probar&&audioHabilitado)beepAlarma();
+    return audioHabilitado;
+  }catch(e){
+    audioHabilitado=false;
+    actualizarBotonAudio();
+    console.warn("No fue posible habilitar el audio de alarmas",e);
+    return false;
+  }
+}
+
+async function probarSonido(){
+  const ok=await habilitarAudio(false);
+  if(ok)beepAlarma();
+}
+
+function beepAlarma(){
+  try{
+    const ctx=obtenerAudioContext();
+    if(!ctx||ctx.state!=="running"){
+      audioHabilitado=false;
+      actualizarBotonAudio();
+      return;
+    }
+    const inicio=ctx.currentTime;
+    const tonos=[880,1040,880];
+    tonos.forEach((freq,i)=>{
+      const t=inicio+(i*0.34);
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      osc.type="square";
+      osc.frequency.setValueAtTime(freq,t);
+      gain.gain.setValueAtTime(0.0001,t);
+      gain.gain.exponentialRampToValueAtTime(0.16,t+0.025);
+      gain.gain.setValueAtTime(0.16,t+0.16);
+      gain.gain.exponentialRampToValueAtTime(0.0001,t+0.26);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t+0.28);
+    });
+  }catch(e){console.warn("Audio alarma no disponible",e);}
+}
+
+function procesarEventoAlarma(id,text){
+  try{
+    const e=JSON.parse(text);
+    const torre=torreById(id);
+    if(!torre)return;
+    const activa=e.estado_evento==="activa";
+    const restablecida=e.estado_evento==="restablecida";
+    if(!activa&&!restablecida)return;
+
+    const toast=document.createElement("div");
+    toast.className="alarm-toast"+(restablecida?" restablecida":"");
+    const titulo=activa?"🚨 ALARMA ACTIVA":"✅ ALARMA RESTABLECIDA";
+    const valor=e.valor===null||e.valor===undefined?"--":Number(e.valor).toFixed(1)+" °C";
+    const limite=e.limite===null||e.limite===undefined?"--":Number(e.limite).toFixed(1)+" °C";
+    toast.innerHTML=`
+      <div class="at-head">
+        <div class="at-title">${titulo}</div>
+        <button class="at-close" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="at-tower">${torre.nombre}</div>
+      <div class="at-msg">${e.descripcion||"Alarma de temperatura"}</div>
+      <div class="at-values"><span>Actual: <b>${valor}</b></span><span>Límite: <b>${limite}</b></span></div>`;
+    toast.querySelector(".at-close").onclick=()=>toast.remove();
+    const stack=document.getElementById("alarmToastStack");
+    stack.prepend(toast);
+    while(stack.children.length>5)stack.lastElementChild.remove();
+    if(activa)beepAlarma();
+    setTimeout(()=>{if(toast.isConnected)toast.remove();},activa?15000:9000);
+  }catch(err){console.error("Evento de alarma inválido",err);}
+}
+
 function procesarEstadoNodo(id,text){
   nodeState[id]=String(text||"").trim().toLowerCase();
   if(nodeState[id]!=="online"){nodeData[id]=null;lastNodeTelemetry[id]=0;}
@@ -911,6 +1086,9 @@ function updateClock(){const now=new Date();document.getElementById("clock").tex
 setInterval(()=>{const now=Date.now();let changed=false;TORRES.forEach(t=>{if(lastNodeTelemetry[t.id]&&now-lastNodeTelemetry[t.id]>12000){nodeData[t.id]=null;lastNodeTelemetry[t.id]=0;changed=true;}});if(lastHydronixTelemetry&&now-lastHydronixTelemetry>12000){TORRES.forEach(t=>hydData[t.id]=null);lastHydronixTelemetry=0;changed=true;}if(changed)renderAll();const last=lastNodeTelemetry[selectedTower];if(last){const sec=Math.floor((now-last)/1000);const e=document.getElementById("lastUpdate");const ei=document.getElementById("lastUpdateInline");const text=sec<2?"AHORA":`HACE ${sec} s`;e.textContent=text;ei.textContent=text;e.className="st-value "+(sec<=10?"status-online":"status-wait");}},1000);
 function constructInit(){construirAlarmGrid();renderAll();drawTrend();updateClock();setInterval(updateClock,1000);window.addEventListener("resize",drawTrend);document.getElementById("mqttPassword").addEventListener("keydown",e=>{if(e.key==="Enter")conectar();});}
 constructInit();
+
+// El navegador puede bloquear audio automático. El botón 🔊 permite habilitarlo y probarlo.
+document.addEventListener("DOMContentLoaded",actualizarBotonAudio);
 </script>
 </body>
 </html>
