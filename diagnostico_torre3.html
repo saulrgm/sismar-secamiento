@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SISMAR - Diagnóstico remoto Torre 3</title>
+<style>
+:root{--bg:#06110d;--panel:#0a1a14;--line:#164a38;--text:#e8fff4;--muted:#8ab6a2;--ok:#3cff9c;--warn:#ffd95a;--bad:#ff5f67;--cyan:#46d9ff}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif}
+.wrap{max-width:1180px;margin:auto;padding:18px}.head{display:flex;gap:14px;align-items:center;justify-content:space-between;margin-bottom:14px}.brand h1{margin:0;font-size:25px}.brand p{margin:5px 0 0;color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}.login{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-bottom:14px}.login input,.login button{height:44px;border-radius:10px;border:1px solid var(--line);background:#07140f;color:var(--text);padding:0 12px}.login button{cursor:pointer;font-weight:700;background:#0c4f38}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.metric .label{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em}.metric .value{font-size:25px;font-weight:800;margin-top:8px}.wide{grid-column:span 2}.status{display:inline-flex;align-items:center;gap:8px;font-weight:800}.dot{width:10px;height:10px;border-radius:50%;background:#777}.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}.cyan{color:var(--cyan)}
+.section{margin-top:14px}.section h2{font-size:16px;margin:0 0 10px}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.kv{display:grid;grid-template-columns:180px 1fr;border-top:1px solid #103528;padding:8px 0}.kv:first-child{border-top:none}.kv span:first-child{color:var(--muted)}pre{white-space:pre-wrap;word-break:break-word;background:#03100b;border:1px solid #103528;border-radius:10px;padding:12px;max-height:320px;overflow:auto;color:#c9ffe6}.log{height:260px;overflow:auto;background:#03100b;border:1px solid #103528;border-radius:10px;padding:10px;font-family:Consolas,monospace;font-size:12px}.log div{padding:4px 0;border-bottom:1px solid #0c241b}.help{line-height:1.5;color:#cce8da}.help strong{color:white}
+@media(max-width:850px){.grid{grid-template-columns:1fr 1fr}.two{grid-template-columns:1fr}.login{grid-template-columns:1fr}.wide{grid-column:span 2}}@media(max-width:520px){.grid{grid-template-columns:1fr}.wide{grid-column:span 1}.kv{grid-template-columns:1fr}.head{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head"><div class="brand"><h1>SISMAR · Diagnóstico remoto Torre 3</h1><p>PT100 / MAX31865 / DHT22 vía HiveMQ, sin acceso físico a la Pico W</p></div><div id="connBadge" class="status"><span class="dot" id="connDot"></span><span id="connText">DESCONECTADO</span></div></div>
+  <div class="card login">
+    <input id="user" autocomplete="username" placeholder="Usuario MQTT">
+    <input id="pass" autocomplete="current-password" type="password" placeholder="Contraseña MQTT">
+    <button id="btn">CONECTAR</button>
+  </div>
+
+  <div class="grid">
+    <div class="card metric"><div class="label">Estado nodo</div><div class="value" id="nodeState">--</div></div>
+    <div class="card metric"><div class="label">PT100</div><div class="value" id="ptState">--</div></div>
+    <div class="card metric"><div class="label">Temperatura arroz</div><div class="value" id="ptTemp">-- °C</div></div>
+    <div class="card metric"><div class="label">Fault MAX31865</div><div class="value" id="ptFault">--</div></div>
+    <div class="card metric"><div class="label">Resistencia PT100</div><div class="value" id="ptOhm">-- Ω</div></div>
+    <div class="card metric"><div class="label">RAW RTD</div><div class="value" id="ptRaw">--</div></div>
+    <div class="card metric"><div class="label">DHT22</div><div class="value" id="dhtState">--</div></div>
+    <div class="card metric"><div class="label">Sensores online</div><div class="value" id="sensorCount">-- / 2</div></div>
+    <div class="card metric wide"><div class="label">Última telemetría</div><div class="value" id="lastSeen">--</div></div>
+    <div class="card metric wide"><div class="label">Uptime Pico</div><div class="value" id="uptime">--</div></div>
+  </div>
+
+  <div class="section two">
+    <div class="card"><h2>Detalle PT100 / MAX31865</h2>
+      <div class="kv"><span>Estado</span><strong id="dPtState">--</strong></div>
+      <div class="kv"><span>Temperatura</span><strong id="dPtTemp">--</strong></div>
+      <div class="kv"><span>Resistencia</span><strong id="dPtOhm">--</strong></div>
+      <div class="kv"><span>RAW</span><strong id="dPtRaw">--</strong></div>
+      <div class="kv"><span>Fault</span><strong id="dPtFault">--</strong></div>
+      <div class="kv"><span>Interpretación</span><strong id="faultMeaning">Esperando datos...</strong></div>
+    </div>
+    <div class="card"><h2>Detalle DHT22</h2>
+      <div class="kv"><span>Estado</span><strong id="dDhtState">--</strong></div>
+      <div class="kv"><span>Temperatura ambiente</span><strong id="dDhtTemp">--</strong></div>
+      <div class="kv"><span>Humedad ambiente</span><strong id="dDhtHum">--</strong></div>
+      <div class="kv"><span>MQTT topic</span><strong>sismar/secador01/torre03/telemetria</strong></div>
+    </div>
+  </div>
+
+  <div class="section card"><h2>Historial de cambios PT100</h2><div id="log" class="log"></div></div>
+  <div class="section card"><h2>Qué significa el estado</h2><div class="help">
+    <strong>online:</strong> MAX31865 respondió y la conversión del PT100 fue válida.<br>
+    <strong>error_sensor:</strong> el MAX31865 sí responde por SPI, pero reportó una falla del circuito RTD. El valor <code>fault</code> nos permite seguir el diagnóstico.<br>
+    <strong>hardware_no_disponible:</strong> la Pico no está obteniendo una respuesta válida del MAX31865; apunta más a alimentación, módulo o bus SPI.<br>
+    <strong>error_lectura:</strong> ocurrió una excepción durante la lectura; el texto de <code>fault</code> ayuda a identificarla.<br><br>
+    Esta página <strong>no modifica</strong> la Raspberry ni sus límites; solo escucha la telemetría existente.
+  </div></div>
+  <div class="section card"><h2>Último JSON recibido</h2><pre id="raw">--</pre></div>
+</div>
+<script>
+const MQTT_URL='wss://165a1839496b496da003fd2a5f5f10cd.s1.eu.hivemq.cloud:8884/mqtt';
+const TOPIC='sismar/secador01/torre03/telemetria';
+const TOPIC_ESTADO='sismar/secador01/torre03/estado';
+let client=null, lastPtState=null, lastFault=null;
+function loadMqtt(){return new Promise((resolve,reject)=>{if(window.mqtt)return resolve();const urls=['https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.10.4/mqtt.min.js','https://cdn.jsdelivr.net/npm/mqtt@5.10.4/dist/mqtt.min.js','https://unpkg.com/mqtt@5.10.4/dist/mqtt.min.js'];let i=0;function next(){if(i>=urls.length)return reject(new Error('No se pudo cargar MQTT.js'));const s=document.createElement('script');s.src=urls[i++];s.onload=()=>window.mqtt?resolve():next();s.onerror=next;document.head.appendChild(s)}next()})}
+const $=id=>document.getElementById(id);function text(id,v){$(id).textContent=v==null?'--':v}function cls(id,state){const e=$(id);e.classList.remove('ok','bad','warn','cyan');if(state==='online'||state==='normal')e.classList.add('ok');else if(state==='error_sensor'||state==='hardware_no_disponible'||state==='error_lectura'||state==='offline')e.classList.add('bad');else e.classList.add('warn')}
+function fmtUptime(ms){if(ms==null)return'--';let s=Math.floor(ms/1000),d=Math.floor(s/86400);s%=86400;let h=Math.floor(s/3600);s%=3600;let m=Math.floor(s/60);s%=60;return `${d}d ${h}h ${m}m ${s}s`}
+function meaning(state,fault){if(state==='online')return 'Lectura válida. MAX31865 y PT100 operativos.';if(state==='error_sensor')return `MAX31865 responde, pero reporta falla del circuito RTD (${fault||'sin código'}).`;if(state==='hardware_no_disponible')return 'MAX31865 no está respondiendo correctamente por SPI. Revisar módulo/alimentación/cableado cuando sea posible.';if(state==='error_lectura')return `Excepción durante la lectura: ${fault||'sin detalle'}`;return 'Estado no reconocido.'}
+function addLog(msg){const d=document.createElement('div');d.textContent=`${new Date().toLocaleString()} | ${msg}`;$('log').prepend(d)}
+function render(data){const t=data.torre || (data.torres&&data.torres.torre03) || {};const a=t.ambiente||{};const r=data.resumen_local||{};const st=t.estado||'--';const fault=t.fault==null?'--':String(t.fault);text('ptState',st);cls('ptState',st);text('ptTemp',t.temperatura==null?'-- °C':`${t.temperatura} °C`);text('ptFault',fault);text('ptOhm',t.resistencia==null?'-- Ω':`${t.resistencia} Ω`);text('ptRaw',t.raw==null?'--':t.raw);text('dhtState',a.estado||'--');cls('dhtState',a.estado);text('sensorCount',`${r.sensores_online_total??'--'} / ${r.sensores_total??2}`);text('lastSeen',new Date().toLocaleString());text('uptime',fmtUptime(data.uptime_ms));
+text('dPtState',st);cls('dPtState',st);text('dPtTemp',t.temperatura==null?'--':`${t.temperatura} °C`);text('dPtOhm',t.resistencia==null?'--':`${t.resistencia} Ω`);text('dPtRaw',t.raw==null?'--':t.raw);text('dPtFault',fault);text('faultMeaning',meaning(st,fault));cls('faultMeaning',st);text('dDhtState',a.estado||'--');text('dDhtTemp',a.temperatura==null?'--':`${a.temperatura} °C`);text('dDhtHum',a.humedad==null?'--':`${a.humedad} %`);$('raw').textContent=JSON.stringify(data,null,2);
+if(st!==lastPtState||fault!==lastFault){addLog(`PT100 ${lastPtState||'--'} -> ${st} | fault=${fault} | T=${t.temperatura??'--'} C | R=${t.resistencia??'--'} ohm`);lastPtState=st;lastFault=fault}}
+$('btn').onclick=async()=>{try{await loadMqtt();$('btn').disabled=true;$('btn').textContent='CONECTANDO...';const user=$('user').value.trim(),pass=$('pass').value;if(!user||!pass)throw new Error('Ingresa usuario y contraseña MQTT');client=mqtt.connect(MQTT_URL,{username:user,password:pass,clientId:'sismar-diag-t3-'+Math.random().toString(16).slice(2),clean:true,connectTimeout:10000,reconnectPeriod:3000});client.on('connect',()=>{$('connText').textContent='CONECTADO';$('connText').className='ok';$('connDot').style.background='#3cff9c';$('btn').textContent='CONECTADO';client.subscribe([TOPIC,TOPIC_ESTADO]);addLog('MQTT conectado y suscrito a Torre 3')});client.on('message',(topic,payload)=>{if(topic===TOPIC_ESTADO){const s=payload.toString();text('nodeState',s.toUpperCase());cls('nodeState',s);return}try{render(JSON.parse(payload.toString()))}catch(e){addLog('JSON inválido: '+e.message)}});client.on('error',e=>{addLog('MQTT error: '+e.message);$('connText').textContent='ERROR';$('connText').className='bad'});client.on('close',()=>{if($('connText').textContent==='CONECTADO'){$('connText').textContent='RECONECTANDO';$('connText').className='warn'}})}catch(e){alert(e.message);$('btn').disabled=false;$('btn').textContent='CONECTAR'}};
+</script>
+</body></html>
