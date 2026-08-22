@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SISMAR - Diagnóstico remoto 3 torres</title>
+<style>
+:root{--bg:#06110d;--panel:#0a1a14;--line:#164a38;--text:#e8fff4;--muted:#8ab6a2;--ok:#3cff9c;--warn:#ffd95a;--bad:#ff5f67;--cyan:#46d9ff;--purple:#c38cff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif}.wrap{max-width:1450px;margin:auto;padding:18px}.head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px}.head h1{margin:0;font-size:26px}.head p{margin:5px 0 0;color:var(--muted)}.badge{font-weight:800}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}.login{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-bottom:14px}.login input,.login button{height:44px;border:1px solid var(--line);border-radius:10px;background:#07140f;color:var(--text);padding:0 12px}.login button{background:#0c4f38;font-weight:800;cursor:pointer}.towers{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.tower h2{margin:0 0 4px}.sub{color:var(--muted);font-size:12px;margin-bottom:12px}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}.metric{border:1px solid #103528;border-radius:10px;padding:10px;background:#07140f}.label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em}.value{font-size:20px;font-weight:800;margin-top:5px}.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}.cyan{color:var(--cyan)}.purple{color:var(--purple)}.log{margin-top:14px;height:300px;overflow:auto;background:#03100b;border:1px solid #103528;border-radius:10px;padding:10px;font:12px Consolas,monospace}.log div{padding:4px 0;border-bottom:1px solid #0c241b}.links{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.links a{color:var(--text);text-decoration:none;border:1px solid var(--line);border-radius:9px;padding:9px 12px;background:#07140f}.footer{margin-top:12px;color:var(--muted);font-size:12px;line-height:1.5}@media(max-width:980px){.towers{grid-template-columns:1fr}.login{grid-template-columns:1fr}.head{align-items:flex-start;flex-direction:column}}@media(max-width:520px){.metrics{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <div class="head"><div><h1>SISMAR · Diagnóstico remoto de las 3 torres</h1><p>PT100 / MAX31865 / DHT22 vía HiveMQ · Solo lectura</p></div><div class="badge" id="conn">DESCONECTADO</div></div>
+ <div class="card login"><input id="user" autocomplete="username" placeholder="Usuario MQTT"><input id="pass" type="password" autocomplete="current-password" placeholder="Contraseña MQTT"><button id="btn">CONECTAR</button></div>
+ <div class="towers" id="towers"></div>
+ <div class="card" style="margin-top:14px"><strong>Historial de cambios</strong><div id="log" class="log"></div></div>
+ <div class="links"><a href="diagnostico_torre1.html">Abrir detalle Torre 1</a><a href="diagnostico_torre2.html">Abrir detalle Torre 2</a><a href="diagnostico_torre3.html">Abrir detalle Torre 3</a></div>
+ <div class="footer">Esta página no modifica límites, firmware ni configuración de las Pico W. Solo escucha telemetría y estado MQTT de los tres nodos. Si un PT100 cambia de estado, el evento queda registrado en el historial mientras esta página permanezca abierta.</div>
+</div>
+<script>
+const MQTT_URL='wss://165a1839496b496da003fd2a5f5f10cd.s1.eu.hivemq.cloud:8884/mqtt';
+const cfg={
+  torre01:{name:'TORRE 1',tele:'sismar/secador01/torre01/telemetria',state:'sismar/secador01/torre01/estado'},
+  torre02:{name:'TORRE 2',tele:'sismar/secador01/torre02/telemetria',state:'sismar/secador01/torre02/estado'},
+  torre03:{name:'TORRE 3',tele:'sismar/secador01/torre03/telemetria',state:'sismar/secador01/torre03/estado'}
+};
+let client=null;const last={};
+function loadMqtt(){return new Promise((resolve,reject)=>{if(window.mqtt)return resolve();const urls=['https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.10.4/mqtt.min.js','https://cdn.jsdelivr.net/npm/mqtt@5.10.4/dist/mqtt.min.js','https://unpkg.com/mqtt@5.10.4/dist/mqtt.min.js'];let i=0;function next(){if(i>=urls.length)return reject(new Error('No se pudo cargar MQTT.js'));const s=document.createElement('script');s.src=urls[i++];s.onload=()=>window.mqtt?resolve():next();s.onerror=next;document.head.appendChild(s)}next()})}
+function towerHTML(id,c){return `<div class="card tower"><h2>${c.name}</h2><div class="sub">${c.tele}</div><div class="metrics">
+<div class="metric"><div class="label">Nodo</div><div class="value" id="${id}-node">--</div></div>
+<div class="metric"><div class="label">Sensores</div><div class="value" id="${id}-count">-- / 2</div></div>
+<div class="metric"><div class="label">PT100</div><div class="value" id="${id}-pt">--</div></div>
+<div class="metric"><div class="label">Temperatura arroz</div><div class="value" id="${id}-temp">-- °C</div></div>
+<div class="metric"><div class="label">Resistencia</div><div class="value" id="${id}-ohm">-- Ω</div></div>
+<div class="metric"><div class="label">RAW</div><div class="value" id="${id}-raw">--</div></div>
+<div class="metric"><div class="label">Fault MAX31865</div><div class="value" id="${id}-fault">--</div></div>
+<div class="metric"><div class="label">DHT22</div><div class="value" id="${id}-dht">--</div></div>
+<div class="metric"><div class="label">Temp. ambiente</div><div class="value" id="${id}-amb">-- °C</div></div>
+<div class="metric"><div class="label">Hum. ambiente</div><div class="value" id="${id}-hum">-- %</div></div>
+<div class="metric" style="grid-column:1/-1"><div class="label">Última telemetría</div><div class="value" id="${id}-seen">--</div></div>
+</div></div>`}
+document.getElementById('towers').innerHTML=Object.entries(cfg).map(([id,c])=>towerHTML(id,c)).join('');
+function set(id,v,state){const e=document.getElementById(id);e.textContent=v==null?'--':v;e.className='value';if(state==='online'||state==='normal')e.classList.add('ok');else if(['offline','error_sensor','hardware_no_disponible','error_lectura'].includes(state))e.classList.add('bad');else if(state)e.classList.add('warn')}
+function addLog(msg){const d=document.createElement('div');d.textContent=`${new Date().toLocaleString()} | ${msg}`;document.getElementById('log').prepend(d)}
+function render(id,data){const t=data.torre||(data.torres&&data.torres[id])||{};const a=t.ambiente||{};const r=data.resumen_local||{};const st=t.estado||'--',fault=t.fault==null?'--':String(t.fault);set(`${id}-pt`,st,st);set(`${id}-temp`,t.temperatura==null?'-- °C':`${t.temperatura} °C`);set(`${id}-ohm`,t.resistencia==null?'-- Ω':`${t.resistencia} Ω`);set(`${id}-raw`,t.raw==null?'--':t.raw);set(`${id}-fault`,fault,st==='online'?'normal':st);set(`${id}-dht`,a.estado||'--',a.estado);set(`${id}-amb`,a.temperatura==null?'-- °C':`${a.temperatura} °C`);set(`${id}-hum`,a.humedad==null?'-- %':`${a.humedad} %`);set(`${id}-count`,`${r.sensores_online_total??'--'} / ${r.sensores_total??2}`,r.sensores_online_total===2?'online':'offline');set(`${id}-seen`,new Date().toLocaleTimeString());const key=st+'|'+fault;if(last[id]!==key){addLog(`${cfg[id].name} | PT100 ${last[id]||'--'} -> ${st} | fault=${fault} | T=${t.temperatura??'--'} C | R=${t.resistencia??'--'} ohm`);last[id]=key}}
+function topicToId(topic){for(const [id,c] of Object.entries(cfg)){if(topic===c.tele||topic===c.state)return id}return null}
+document.getElementById('btn').onclick=async()=>{try{await loadMqtt();const user=document.getElementById('user').value.trim(),pass=document.getElementById('pass').value;if(!user||!pass)throw new Error('Ingresa usuario y contraseña MQTT');document.getElementById('btn').disabled=true;document.getElementById('btn').textContent='CONECTANDO...';client=mqtt.connect(MQTT_URL,{username:user,password:pass,clientId:'sismar-diag-3-'+Math.random().toString(16).slice(2),clean:true,connectTimeout:10000,reconnectPeriod:3000});client.on('connect',()=>{document.getElementById('conn').textContent='CONECTADO';document.getElementById('conn').className='badge ok';document.getElementById('btn').textContent='CONECTADO';const topics=[];Object.values(cfg).forEach(c=>topics.push(c.tele,c.state));client.subscribe(topics);addLog('MQTT conectado y suscrito a las 3 torres')});client.on('message',(topic,payload)=>{const id=topicToId(topic);if(!id)return;if(topic===cfg[id].state){const s=payload.toString();set(`${id}-node`,s.toUpperCase(),s);return}try{render(id,JSON.parse(payload.toString()))}catch(e){addLog(`${cfg[id].name} | JSON inválido: ${e.message}`)}});client.on('error',e=>{addLog('MQTT error: '+e.message);document.getElementById('conn').textContent='ERROR';document.getElementById('conn').className='badge bad'});client.on('close',()=>{if(document.getElementById('conn').textContent==='CONECTADO'){document.getElementById('conn').textContent='RECONECTANDO';document.getElementById('conn').className='badge warn'}})}catch(e){alert(e.message);document.getElementById('btn').disabled=false;document.getElementById('btn').textContent='CONECTAR'}};
+</script>
+</body></html>
